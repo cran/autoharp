@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>treeharp</title>
+
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">treeharp</h1>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#treeharp-class">TreeHarp Class</a><ul>
+<li><a href="#slots">Slots</a><ul>
+<li><a href="#adjlist">adjList</a></li>
+<li><a href="#nodetypes">nodeTypes</a></li>
+<li><a href="#call">call</a></li>
+<li><a href="#repr">repr</a></li>
+</ul></li>
+<li><a href="#methods">Methods</a></li>
+</ul></li>
+<li><a href="#forestharp">ForestHarp</a></li>
+<li><a href="#treeharp-routines">TreeHarp Routines</a><ul>
+<li><a href="#subtree_at">subtree_at</a></li>
+<li><a href="#generate_all_subtrees">generate_all_subtrees</a></li>
+<li><a href="#carve_subtree">carve_subtree</a></li>
+<li><a href="#is_subtree_rooted_at">is_subtree_rooted_at</a></li>
+<li><a href="#path_to_root">path_to_root</a></li>
+<li><a href="#get_recursive_index">get_recursive_index</a></li>
+<li><a href="#get_parent_call_id">get_parent_call_id</a></li>
+</ul></li>
+<li><a href="#tree-similarity-metrics">Tree Similarity Metrics</a><ul>
+<li><a href="#jaccard-similarity">Jaccard Similarity</a></li>
+<li><a href="#dot-product-of-all-possible-subtrees">Dot Product of All Possible Subtrees</a></li>
+<li><a href="#natural-language-processing-nlp-techniques">Natural Language Processing (NLP) Techniques</a></li>
+</ul></li>
+<li><a href="#references">References</a></li>
+</ul>
+</div>
+
+<div id="treeharp-class" class="section level1">
+<h1>TreeHarp Class</h1>
+<p>The TreeHarp S4 class is used to represent an R expression. It can then be manipulated in several ways in order to perform static code analysis of student submissions.</p>
+<p>The lintr package does a superb job of parsing R code, but it provides too much detail for a simpler task that the autoharp does. Hence the tokens that the autoharp focuses on are much fewer. For instance, the <code>(</code> parentheses are dropped.</p>
+<p>Here is a simple expression. Let us use it to study the elements of a TreeHarp object. Suppose we fit a linear model to variables in a dataset. To create a TreeHarp object from an expression, we provide the expression together with the <code>quote = TRUE</code> argument. This is important because method dispatch is performed based on that second argument, not the first! If we were to dispatch on the first, R would evalate the expression in order to check its class - thus destroying the expression we intended to capture.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a>tree1 &lt;-<span class="st"> </span><span class="kw">TreeHarp</span>(<span class="kw">quote</span>(<span class="kw">lm</span>(y <span class="op">~</span><span class="st"> </span>x1 <span class="op">+</span><span class="st"> </span>x2, <span class="dt">data=</span>mydata)), <span class="ot">TRUE</span>)</span>
+<span id="cb1-2"><a href="#cb1-2"></a>opar &lt;-<span class="st"> </span><span class="kw">par</span>(<span class="dt">mar=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>))</span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="kw">plot</span>(tree1, <span class="dt">vertex.size=</span><span class="dv">25</span>, <span class="dt">asp=</span><span class="fl">0.6</span>, <span class="dt">vertex.color=</span><span class="st">&quot;gray&quot;</span>, <span class="dt">vertex.frame.color=</span><span class="ot">NA</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">par</span>(opar)</span></code></pre></div>
+<p>The autoharp relies on the igraph package for plotting graphs, so as you can see, the full set of parameter options can be utilised to create a rich plot for our tree.</p>
+<div id="slots" class="section level2">
+<h2>Slots</h2>
+<p>There are 4 slots in a TreeHarp object. The only compulsory one is the adjList.</p>
+<div id="adjlist" class="section level3">
+<h3>adjList</h3>
+<p>This slot contains an adjacency list that represents the tree structure of the code. Nodes in a tree are labelled in Breadth-First Search (BFS) order. Thus the root node has id 1, and does not appear in the adjacency list. The TreeHarp convention is to list each edge only once, as a child. Here’s what we mean: node 2 in the example above is a neighbour of node 1 and 4, but it only appears under node 1. It does not appear as an adjacent node of node 4 because it is not child of node 4. Terminal nodes (leafs) have a NULL entry in the list.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">slot</span>(tree1, <span class="st">&quot;adjList&quot;</span>)</span>
+<span id="cb3-2"><a href="#cb3-2"></a><span class="co">#&gt; $lm</span></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="co">#&gt; [1] 2 3</span></span>
+<span id="cb3-4"><a href="#cb3-4"></a><span class="co">#&gt; </span></span>
+<span id="cb3-5"><a href="#cb3-5"></a><span class="co">#&gt; $`~`</span></span>
+<span id="cb3-6"><a href="#cb3-6"></a><span class="co">#&gt; [1] 4 5</span></span>
+<span id="cb3-7"><a href="#cb3-7"></a><span class="co">#&gt; </span></span>
+<span id="cb3-8"><a href="#cb3-8"></a><span class="co">#&gt; $data</span></span>
+<span id="cb3-9"><a href="#cb3-9"></a><span class="co">#&gt; [1] 6</span></span>
+<span id="cb3-10"><a href="#cb3-10"></a><span class="co">#&gt; </span></span>
+<span id="cb3-11"><a href="#cb3-11"></a><span class="co">#&gt; $y</span></span>
+<span id="cb3-12"><a href="#cb3-12"></a><span class="co">#&gt; NULL</span></span>
+<span id="cb3-13"><a href="#cb3-13"></a><span class="co">#&gt; </span></span>
+<span id="cb3-14"><a href="#cb3-14"></a><span class="co">#&gt; $`+`</span></span>
+<span id="cb3-15"><a href="#cb3-15"></a><span class="co">#&gt; [1] 7 8</span></span>
+<span id="cb3-16"><a href="#cb3-16"></a><span class="co">#&gt; </span></span>
+<span id="cb3-17"><a href="#cb3-17"></a><span class="co">#&gt; $mydata</span></span>
+<span id="cb3-18"><a href="#cb3-18"></a><span class="co">#&gt; NULL</span></span>
+<span id="cb3-19"><a href="#cb3-19"></a><span class="co">#&gt; </span></span>
+<span id="cb3-20"><a href="#cb3-20"></a><span class="co">#&gt; $x1</span></span>
+<span id="cb3-21"><a href="#cb3-21"></a><span class="co">#&gt; NULL</span></span>
+<span id="cb3-22"><a href="#cb3-22"></a><span class="co">#&gt; </span></span>
+<span id="cb3-23"><a href="#cb3-23"></a><span class="co">#&gt; $x2</span></span>
+<span id="cb3-24"><a href="#cb3-24"></a><span class="co">#&gt; NULL</span></span></code></pre></div>
+</div>
+<div id="nodetypes" class="section level3">
+<h3>nodeTypes</h3>
+<p>If the object was constructed from an R language object, this slot will be automatically populated. It will contain information about the types of nodes in the object. The object in this slot is a data frame with the following columns:</p>
+<ol style="list-style-type: decimal">
+<li><em>id</em> (node id). The root node has id 1.</li>
+<li><em>name</em>. The name of the node.</li>
+<li><em>call_status</em>. A TRUE/FALSE column indicating if the node was a call or not.</li>
+<li><em>formal_arg</em>. If the node is not a call, then this column will indicate if it is a formal argument or not. If it is not a call and not a formal argument, it is a symbol representing an R object - we call this an actual argument.</li>
+<li><em>depth</em>. This is the depth of the node in the tree. The root of the tree has depth 1.</li>
+</ol>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">slot</span>(tree1, <span class="st">&quot;nodeTypes&quot;</span>)</span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="co">#&gt;   id   name call_status formal_arg depth</span></span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="co">#&gt; 1  1     lm        TRUE      FALSE     1</span></span>
+<span id="cb4-4"><a href="#cb4-4"></a><span class="co">#&gt; 2  2      ~        TRUE      FALSE     2</span></span>
+<span id="cb4-5"><a href="#cb4-5"></a><span class="co">#&gt; 3  3   data       FALSE       TRUE     2</span></span>
+<span id="cb4-6"><a href="#cb4-6"></a><span class="co">#&gt; 4  4      y       FALSE      FALSE     3</span></span>
+<span id="cb4-7"><a href="#cb4-7"></a><span class="co">#&gt; 5  5      +        TRUE      FALSE     3</span></span>
+<span id="cb4-8"><a href="#cb4-8"></a><span class="co">#&gt; 6  6 mydata       FALSE      FALSE     3</span></span>
+<span id="cb4-9"><a href="#cb4-9"></a><span class="co">#&gt; 7  7     x1       FALSE      FALSE     4</span></span>
+<span id="cb4-10"><a href="#cb4-10"></a><span class="co">#&gt; 8  8     x2       FALSE      FALSE     4</span></span></code></pre></div>
+</div>
+<div id="call" class="section level3">
+<h3>call</h3>
+<p>The call slot stores the original expression that was used to construct the TreeHarp object, just in case you need it later.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">slot</span>(tree1, <span class="st">&quot;call&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2"></a><span class="co">#&gt; lm(y ~ x1 + x2, data = mydata)</span></span></code></pre></div>
+</div>
+<div id="repr" class="section level3">
+<h3>repr</h3>
+<p>The repr slot contains a string representation of the object. If the original TreeHarp object has been mutilated (using one of the routines below), then it may not be a proper R expression, so this slot stores the best representation of it. This slot is used when the object is printed, or when <code>show</code> is called on the S4 object.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a>tree1</span>
+<span id="cb6-2"><a href="#cb6-2"></a><span class="co">#&gt; lm(y ~ x1 + x2, data = mydata)</span></span></code></pre></div>
+</div>
+</div>
+<div id="methods" class="section level2">
+<h2>Methods</h2>
+<p>As we have already demonstrated, the plot method exists for this class. It relies on the tree layout of igraph package, but additional arguments can be used to customise the plot. For instance, we could use colour to distinguish between calls and non-call nodes:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>opar &lt;-<span class="st"> </span><span class="kw">par</span>(<span class="dt">mar=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>,<span class="dv">0</span>))</span>
+<span id="cb7-2"><a href="#cb7-2"></a><span class="kw">plot</span>(tree1, <span class="dt">vertex.size=</span><span class="dv">25</span>, <span class="dt">asp=</span><span class="fl">0.6</span>, <span class="dt">vertex.color=</span>tree1<span class="op">@</span>nodeTypes<span class="op">$</span>call_status)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" style="display: block; margin: auto;" /></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">par</span>(opar)</span></code></pre></div>
+<p>Here are other methods defined for the TreeHarp class:</p>
+<ul>
+<li><code>length</code>: returns the number of nodes.</li>
+<li><code>names</code>: returns the node names.</li>
+<li><code>as.matrix</code>: returns a symmetric matrix of 1’s and 0’s indicating edges in the tree.</li>
+<li><code>get_parent_id</code>: returns the parent id of a node.</li>
+<li><code>get_child_ids</code>: returns the ids of the children of a node.</li>
+<li><code>get_node_types</code>: returns the nodeTypes slot from a TreeHarp object.</li>
+<li><code>get_adj_list</code>: returns the adjacency list slot from a TreeHarp object.</li>
+</ul>
+</div>
+</div>
+<div id="forestharp" class="section level1">
+<h1>ForestHarp</h1>
+<p>A ForestHarp is a loosely defined idea, in the sense that there is no such class defined. However, it is utilised fairly commonly when dealing with script submissions from students. The precise definition is a list of TreeHarp objects. It can be created using the <code>rmd_to_forestharp</code> function.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>f1 &lt;-<span class="st"> </span><span class="kw">rmd_to_forestharp</span>(<span class="kw">system.file</span>(<span class="st">&quot;examples&quot;</span>, <span class="st">&quot;student_scripts&quot;</span>, </span>
+<span id="cb9-2"><a href="#cb9-2"></a>                                    <span class="st">&quot;qn01_scr_02.R&quot;</span>, <span class="dt">package=</span><span class="st">&quot;autoharp&quot;</span>))</span>
+<span id="cb9-3"><a href="#cb9-3"></a><span class="kw">length</span>(f1)</span>
+<span id="cb9-4"><a href="#cb9-4"></a><span class="co">#&gt; [1] 2</span></span></code></pre></div>
+<p>From the sample R script above, we would obtain a list of length 2, with each element being a separate TreeHarp object. To work with such lists, the package provides <code>fapply</code>, for applying functions to lists of TreeHarp objects and combining them back together again. The function applied to each TreeHarp object has to be a function that is specifically for TreeHarp objects. fapply gives you options to combine the output from each TreeHarp object in however which way you choose.</p>
+<p>Suppose that we wished to count the number of times a <code>for</code> loop was used in the whole script. Then this would do the trick:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a><span class="kw">fapply</span>(f1, count_fn_call, <span class="dt">pattern=</span><span class="st">&quot;for&quot;</span>)</span>
+<span id="cb10-2"><a href="#cb10-2"></a><span class="co">#&gt; [1] 1</span></span></code></pre></div>
+<p><code>count_fn_call</code> is a ForestHarp helper function. <code>fapply</code> applies it to each TreeHarp object in the list, and then combines that output into a scalar. By default, it combines them by taking the sum. However, it is possible to specify the combining function, or to just return the uncombined list. Here’s an example of the former, returning a logical value instead of the sum:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="kw">fapply</span>(f1, count_fn_call, <span class="dt">pattern=</span><span class="st">&quot;for&quot;</span>, <span class="dt">combine=</span><span class="ot">TRUE</span>, </span>
+<span id="cb11-2"><a href="#cb11-2"></a>       <span class="dt">combiner_fn =</span> <span class="cf">function</span>(x) <span class="kw">any</span>(<span class="kw">unlist</span>(x) <span class="op">&gt;</span><span class="st"> </span><span class="dv">0</span>))</span>
+<span id="cb11-3"><a href="#cb11-3"></a><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<p>In this case, it returns a single TRUE/FALSE, indicating whether a <code>for</code> loop was present in any of the two expressions.</p>
+<p>To return the uncombined list, we can use the following command:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a><span class="kw">fapply</span>(f1, count_fn_call, <span class="dt">pattern=</span><span class="st">&quot;for&quot;</span>, <span class="dt">combine=</span><span class="ot">FALSE</span>)</span>
+<span id="cb12-2"><a href="#cb12-2"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb12-3"><a href="#cb12-3"></a><span class="co">#&gt; [1] 1</span></span>
+<span id="cb12-4"><a href="#cb12-4"></a><span class="co">#&gt; </span></span>
+<span id="cb12-5"><a href="#cb12-5"></a><span class="co">#&gt; [[2]]</span></span>
+<span id="cb12-6"><a href="#cb12-6"></a><span class="co">#&gt; [1] 0</span></span></code></pre></div>
+<p>This is the approach used to accommodate static code analysis of student R scripts. The <code>autoharp</code> comes with a set of ForestHarp helpers - they are documented on the help page. If you require something more specific for what you intend to extract, you will have to write your own. All it has to do is take in a TreeHarp object and return what you are looking for.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a>?<span class="st">`</span><span class="dt">forestharp-helpers</span><span class="st">`</span></span></code></pre></div>
+</div>
+<div id="treeharp-routines" class="section level1">
+<h1>TreeHarp Routines</h1>
+<div id="subtree_at" class="section level2">
+<h2>subtree_at</h2>
+<p>This function returns a subtree. It takes a node number (id) as an argument, and returns a new TreeHarp object rooted at that node. If the subtree is not a legitimate call, then call status cannot be preserved.</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a>th3 &lt;-<span class="st"> </span><span class="kw">TreeHarp</span>(<span class="kw">quote</span>(a &lt;-<span class="st"> </span><span class="kw">f</span>(x, y, <span class="kw">g</span>(v, w))), <span class="dt">quote=</span><span class="ot">TRUE</span>)</span>
+<span id="cb14-2"><a href="#cb14-2"></a>sub_th &lt;-<span class="st"> </span><span class="kw">subtree_at</span>(th3, <span class="dv">3</span>, <span class="ot">TRUE</span>) <span class="co"># preserves call status</span></span>
+<span id="cb14-3"><a href="#cb14-3"></a>sub_th</span>
+<span id="cb14-4"><a href="#cb14-4"></a><span class="co">#&gt; f(x, y, g(v, w))</span></span></code></pre></div>
+</div>
+<div id="generate_all_subtrees" class="section level2">
+<h2>generate_all_subtrees</h2>
+<p>This routine enumerates and prints all subtrees of a TreeHarp object. It follows the algorithm in <span class="citation">(Ruskey 1981)</span>. The method of specifying a subtree is to use a binary array, known as a characteristic array. <strong>The ordering of the nodes is BFS.</strong></p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1"></a>th4 &lt;-<span class="st"> </span><span class="kw">TreeHarp</span>(<span class="kw">quote</span>(<span class="kw">f</span>(x, <span class="kw">g</span>(<span class="dt">z=</span><span class="dv">2</span>))), <span class="dt">quote=</span><span class="ot">TRUE</span>)</span>
+<span id="cb15-2"><a href="#cb15-2"></a>all_trees &lt;-<span class="st"> </span><span class="kw">generate_all_subtrees</span>(th4)</span>
+<span id="cb15-3"><a href="#cb15-3"></a>all_trees</span>
+<span id="cb15-4"><a href="#cb15-4"></a><span class="co">#&gt;      [,1] [,2] [,3] [,4] [,5]</span></span>
+<span id="cb15-5"><a href="#cb15-5"></a><span class="co">#&gt; [1,]    1    0    0    0    0</span></span>
+<span id="cb15-6"><a href="#cb15-6"></a><span class="co">#&gt; [2,]    1    0    1    0    0</span></span>
+<span id="cb15-7"><a href="#cb15-7"></a><span class="co">#&gt; [3,]    1    0    1    1    0</span></span>
+<span id="cb15-8"><a href="#cb15-8"></a><span class="co">#&gt; [4,]    1    0    1    1    1</span></span>
+<span id="cb15-9"><a href="#cb15-9"></a><span class="co">#&gt; [5,]    1    1    0    0    0</span></span>
+<span id="cb15-10"><a href="#cb15-10"></a><span class="co">#&gt; [6,]    1    1    1    0    0</span></span>
+<span id="cb15-11"><a href="#cb15-11"></a><span class="co">#&gt; [7,]    1    1    1    1    0</span></span>
+<span id="cb15-12"><a href="#cb15-12"></a><span class="co">#&gt; [8,]    1    1    1    1    1</span></span></code></pre></div>
+</div>
+<div id="carve_subtree" class="section level2">
+<h2>carve_subtree</h2>
+<p>This function takes a TreeHarp object and a characteristic array as inputs. It returns a TreeHarp object with only the nodes indicated there present.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1"></a><span class="kw">carve_subtree</span>(th4, all_trees[<span class="dv">5</span>,])</span></code></pre></div>
+<p>This routine was meant for internal use initially. Since the returned object is not necessarily a legitimate call in R, this function drops the information in all other slots, including the nodeTypes and repr.</p>
+</div>
+<div id="is_subtree_rooted_at" class="section level2">
+<h2>is_subtree_rooted_at</h2>
+<p>This function can be used to check if one tree is rooted at a particular node of another. Take note that only node names are checked, because once a a subtree is created there is no guarantee that a call is preserved, especially when doing similarity of tree calculations.</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1"></a>thb1 &lt;-<span class="st"> </span><span class="kw">TreeHarp</span>(<span class="kw">quote</span>(<span class="kw">b</span>(d)), <span class="ot">TRUE</span>)</span>
+<span id="cb17-2"><a href="#cb17-2"></a>tha1 &lt;-<span class="st"> </span><span class="kw">TreeHarp</span>(<span class="kw">quote</span>(<span class="kw">a</span>(<span class="kw">b</span>(d), c)), <span class="ot">TRUE</span>)</span>
+<span id="cb17-3"><a href="#cb17-3"></a><span class="kw">is_subtree_rooted_at</span>(thb1, tha1, <span class="dv">1</span>) <span class="co"># FALSE</span></span>
+<span id="cb17-4"><a href="#cb17-4"></a><span class="co">#&gt; [1] FALSE</span></span>
+<span id="cb17-5"><a href="#cb17-5"></a><span class="kw">is_subtree_rooted_at</span>(thb1, tha1, <span class="dv">2</span>) <span class="co"># TRUE</span></span>
+<span id="cb17-6"><a href="#cb17-6"></a><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+</div>
+<div id="path_to_root" class="section level2">
+<h2>path_to_root</h2>
+<p>This function identifies the nodes on the path from a node up to the root of a TreeHarp object. It returns a characteristic array indicating the nodes on that path up to the root.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1"></a>ex1 &lt;-<span class="st"> </span><span class="kw">quote</span>(x &lt;-<span class="st"> </span><span class="kw">f</span>(y, <span class="kw">g</span>(<span class="dv">5</span>)))</span>
+<span id="cb18-2"><a href="#cb18-2"></a>th1 &lt;-<span class="st"> </span><span class="kw">TreeHarp</span>(ex1, <span class="ot">TRUE</span>)</span>
+<span id="cb18-3"><a href="#cb18-3"></a><span class="kw">path_to_root</span>(th1, <span class="dv">5</span>)</span>
+<span id="cb18-4"><a href="#cb18-4"></a><span class="co">#&gt; [1] 1 0 1 0 1 0</span></span></code></pre></div>
+</div>
+<div id="get_recursive_index" class="section level2">
+<h2>get_recursive_index</h2>
+<p>This function can be used to obtain a recursive call index that can be used to extract a sub-call from an R call (language expression). This is useful when we need to preserve the call, yet extract a subtree.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1"></a>ex3 &lt;-<span class="st"> </span><span class="kw">quote</span>(x &lt;-<span class="st"> </span><span class="kw">f</span>(<span class="dt">y =</span> <span class="kw">g</span>(<span class="dv">3</span>, <span class="dv">4</span>), <span class="dt">z=</span>1L))</span>
+<span id="cb19-2"><a href="#cb19-2"></a>t1 &lt;-<span class="st"> </span><span class="kw">TreeHarp</span>(ex3, <span class="ot">TRUE</span>)</span>
+<span id="cb19-3"><a href="#cb19-3"></a>rec_index &lt;-<span class="st"> </span><span class="kw">get_recursive_index</span>(t1, <span class="dv">6</span>)</span>
+<span id="cb19-4"><a href="#cb19-4"></a>ex3[[rec_index <span class="op">+</span><span class="st"> </span><span class="dv">1</span>]]</span>
+<span id="cb19-5"><a href="#cb19-5"></a><span class="co">#&gt; g(3, 4)</span></span>
+<span id="cb19-6"><a href="#cb19-6"></a>ex3[[<span class="kw">get_recursive_index</span>(t1, <span class="dv">3</span>)<span class="op">+</span><span class="dv">1</span>]]</span>
+<span id="cb19-7"><a href="#cb19-7"></a><span class="co">#&gt; f(y = g(3, 4), z = 1L)</span></span></code></pre></div>
+</div>
+<div id="get_parent_call_id" class="section level2">
+<h2>get_parent_call_id</h2>
+<p>This function returns the most recent call from a particular node id. Sometimes, the parent of a node is a formal argument. If we are interested in the parent call, not the immediate parent, then this function might be what you need.</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1"></a>ex3 &lt;-<span class="st"> </span><span class="kw">quote</span>(x &lt;-<span class="st"> </span><span class="kw">f</span>(<span class="dt">y =</span> <span class="kw">g</span>(<span class="dv">3</span>, <span class="dv">4</span>), <span class="dt">z=</span>1L))</span>
+<span id="cb20-2"><a href="#cb20-2"></a>t1 &lt;-<span class="st"> </span><span class="kw">TreeHarp</span>(ex3, <span class="ot">TRUE</span>)</span>
+<span id="cb20-3"><a href="#cb20-3"></a><span class="co"># get the function that calls g:</span></span>
+<span id="cb20-4"><a href="#cb20-4"></a><span class="kw">get_parent_call_id</span>(t1, <span class="dv">6</span>) </span>
+<span id="cb20-5"><a href="#cb20-5"></a><span class="co">#&gt; [1] 3</span></span>
+<span id="cb20-6"><a href="#cb20-6"></a><span class="co">#contrast with this:</span></span>
+<span id="cb20-7"><a href="#cb20-7"></a><span class="kw">get_parent_id</span>(t1, <span class="dv">6</span>)</span>
+<span id="cb20-8"><a href="#cb20-8"></a><span class="co">#&gt; [1] 4</span></span></code></pre></div>
+</div>
+</div>
+<div id="tree-similarity-metrics" class="section level1">
+<h1>Tree Similarity Metrics</h1>
+<p>One of the ambitions of this package was to detect duplicated lines of code that can be reduced through the efficiencies of R for data analysis. An example of undesirable code would be</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1"></a>x1 &lt;-<span class="st"> </span><span class="kw">my_function</span>(arg1)</span>
+<span id="cb21-2"><a href="#cb21-2"></a>x2 &lt;-<span class="st"> </span><span class="kw">my_function</span>(arg2)</span>
+<span id="cb21-3"><a href="#cb21-3"></a>x3 &lt;-<span class="st"> </span><span class="kw">my_function</span>(arg3)</span></code></pre></div>
+<p>Within R, an <code>lapply</code> or <code>vapply</code> on <code>c(arg1, arg2, arg3)</code> would be more appropriate. In order to detect such code, some form of similarity measures would be appropriate and useful. This section documents some of the similarity measures currently present within the autoharp.</p>
+<div id="jaccard-similarity" class="section level2">
+<h2>Jaccard Similarity</h2>
+<p>The Jaccard index is a value that summarises the similarity between two sets. At it’s most basic, it is equal to <span class="math display">\[ \text{Jac}(A,B) = \frac{A \cap B}{A \cup B}\]</span></p>
+<p>The weighted index, which is appropriate when there could be duplicate items within each set, is described on <a href="https://en.wikipedia.org/wiki/Jaccard_index#Weighted_Jaccard_similarity_and_distance">Wikipedia</a>.</p>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1"></a><span class="kw">jaccard_treeharp</span>(tha1, thb1)</span>
+<span id="cb22-2"><a href="#cb22-2"></a><span class="co">#&gt; [1] 0.5</span></span></code></pre></div>
+</div>
+<div id="dot-product-of-all-possible-subtrees" class="section level2">
+<h2>Dot Product of All Possible Subtrees</h2>
+<p>A similarity measure based on counts of all possible subtrees is described in <span class="citation">(Collins and Duffy 2002)</span> and <span class="citation">(Haussler 1999)</span>. That algorithm is implemented here, with some modifications to use brute-force enumeration where necessary.</p>
+<p>To normalise this measure, we divide by the similarity with itself.</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1"></a><span class="kw">K2</span>(tha1, thb1)</span>
+<span id="cb23-2"><a href="#cb23-2"></a><span class="co">#&gt; [1] 3</span></span>
+<span id="cb23-3"><a href="#cb23-3"></a><span class="co"># normalised to 0 - 1:</span></span>
+<span id="cb23-4"><a href="#cb23-4"></a><span class="kw">K2</span>(tha1, thb1)<span class="op">/</span><span class="kw">sqrt</span>(<span class="kw">K2</span>(tha1, tha1)<span class="op">*</span><span class="st"> </span><span class="kw">K2</span>(thb1, thb1))</span>
+<span id="cb23-5"><a href="#cb23-5"></a><span class="co">#&gt; [1] 0.5477226</span></span></code></pre></div>
+<p>This technique was used in <span class="citation">(Song, Park, and Park 2015)</span> to detect plagiarism in source codes.</p>
+</div>
+<div id="natural-language-processing-nlp-techniques" class="section level2">
+<h2>Natural Language Processing (NLP) Techniques</h2>
+<p>Traditional NLP techniques can also be used to compute similarities between student scripts. The function <code>rmd_to_token_count</code> provides a count of tokens.</p>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1"></a><span class="kw">library</span>(tidytext)</span>
+<span id="cb24-2"><a href="#cb24-2"></a><span class="kw">library</span>(text2vec)</span>
+<span id="cb24-3"><a href="#cb24-3"></a><span class="kw">library</span>(tm)</span>
+<span id="cb24-4"><a href="#cb24-4"></a></span>
+<span id="cb24-5"><a href="#cb24-5"></a>stud_script_paths &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;examples&quot;</span>, <span class="st">&quot;student_scripts&quot;</span>, <span class="dt">package=</span><span class="st">&quot;autoharp&quot;</span>)</span>
+<span id="cb24-6"><a href="#cb24-6"></a>stud_script_names &lt;-<span class="st"> </span><span class="kw">list.files</span>(stud_script_paths, <span class="dt">full.names =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb24-7"><a href="#cb24-7"></a></span>
+<span id="cb24-8"><a href="#cb24-8"></a>token_count_list &lt;-<span class="st"> </span><span class="kw">lapply</span>(stud_script_names, rmd_to_token_count)</span>
+<span id="cb24-9"><a href="#cb24-9"></a>token_count_df &lt;-<span class="st"> </span><span class="kw">bind_rows</span>(token_count_list)</span>
+<span id="cb24-10"><a href="#cb24-10"></a><span class="co">#head(token_count_df)</span></span></code></pre></div>
+<p>The counts can then be used in a Bag-of-Words model to compute cosine similarities, for instance.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1"></a>dtm_out &lt;-<span class="st"> </span><span class="kw">cast_dtm</span>(token_count_df, fname, token, n, tm<span class="op">::</span>weightTfIdf)</span>
+<span id="cb25-2"><a href="#cb25-2"></a>dtm_mat &lt;-<span class="st"> </span><span class="kw">as.matrix</span>(dtm_out)</span>
+<span id="cb25-3"><a href="#cb25-3"></a><span class="kw">sim2</span>(dtm_mat)</span>
+<span id="cb25-4"><a href="#cb25-4"></a><span class="co">#Docs            qn01_scr_01.R qn01_scr_02.R qn02_scr_01.R qn02_scr_02.R</span></span>
+<span id="cb25-5"><a href="#cb25-5"></a><span class="co">#  qn01_scr_01.R     1.0000000    0.32776151    0.00000000    0.00000000</span></span>
+<span id="cb25-6"><a href="#cb25-6"></a><span class="co">#  qn01_scr_02.R     0.3277615    1.00000000    0.01166493    0.01166493</span></span>
+<span id="cb25-7"><a href="#cb25-7"></a><span class="co">#  qn02_scr_01.R     0.0000000    0.01166493    1.00000000    0.57194128</span></span>
+<span id="cb25-8"><a href="#cb25-8"></a><span class="co">#  qn02_scr_02.R     0.0000000    0.01166493    0.57194128    1.00000000</span></span></code></pre></div>
+</div>
+</div>
+<div id="references" class="section level1 unnumbered">
+<h1>References</h1>
+<div id="refs" class="references">
+<div id="ref-collins2002convolution">
+<p>Collins, Michael, and Nigel Duffy. 2002. “Convolution Kernels for Natural Language.” In <em>Advances in Neural Information Processing Systems</em>, 625–32.</p>
+</div>
+<div id="ref-haussler1999convolution">
+<p>Haussler, David. 1999. “Convolution Kernels on Discrete Structures.” Technical report, Department of Computer Science, University of California Santa Cruz.</p>
+</div>
+<div id="ref-ruskey1981listing">
+<p>Ruskey, Frank. 1981. “Listing and Counting Subtrees of a Tree.” <em>SIAM Journal on Computing</em> 10 (1): 141–50.</p>
+</div>
+<div id="ref-song2015computation">
+<p>Song, Hyun-Je, Seong-Bae Park, and Se Young Park. 2015. “Computation of Program Source Code Similarity by Composition of Parse Tree and Call Graph.” <em>Mathematical Problems in Engineering</em> 2015.</p>
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

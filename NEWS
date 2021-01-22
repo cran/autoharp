@@ -1,0 +1,51 @@
+v0.0.4:
+- check_correctness also runs in a separate process
+- lint counter function added (count_lints)
+- run_tuner asks for permission before installation
+- generate thumbnails uses anonymous filenames
+
+v0.0.3:
+- render_one runs the student script in a separate process, avoiding the need 
+  to check the user workspace, or to reset search paths.
+- testthat chunks are no longer used in the solution templates. This prevents 
+  any problems if testthat format is modified.
+  
+v0.0.2:
+- render_one allows one to skip correctness checks by setting soln_stuff to be 
+  NA.
+
+v0.0.1.2:
+- check_rmd just checks for chunks, uses extract_chunks directly
+- fh helper to detect for nested for loops added.
+- bug fix for lang_2_tree, when a function definition had NULL as a default
+  argument.
+
+v0.0.1.01:
+- If the solution template did not generate all the scalars it claimed to,
+  render_one( ) will fail, because it checks for the mode of the scalars
+  from the student environment against the mode of the scalars in the solution
+  environment. This has been fixed by running this check when
+  populate_soln_env( ) is called.
+
+v0.0.0.9008:
+- tuner app will now take in a list of lints, and output dataframe can
+  be controlled by specifying the columns to drop.
+
+v0.0.0.9007:
+- TreeHarp constructors updated to work with output of class( ) from R v4.0.0.
+
+v0.0.0.9005:
+- testthat output handles tests such as setequal (which actually runs two tests)
+- max run time added to render_one
+- with the realisation that non-test-named files can be put in tests/, more tests added.
+
+v0.0.0.9004:
+- testthat output is parsed better
+- scalars must be atomic, they are also checked against the template objects
+- more solution templates added.
+
+v0.0.0.9003:
+- hooks are renamed to be autoharp.objs and autoharp.scalars.
+- solution objects, scalars to keep, filename  are stored as hidden objects in the
+  environments.
+- testthat chunks and static code chunks can both be in the same solution template.

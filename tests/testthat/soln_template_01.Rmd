@@ -1,0 +1,17 @@
+---
+title: "Solution template 01"
+output: html_document
+---
+
+```{r generate_objects}
+x <- 1:10
+y <- 11:20
+```
+
+
+```{r test_01, autoharp.objs=c("x", "y"), autoharp.scalars=c("means_check", "sets_check")}
+
+means_check <- mean(x) == mean(.x)
+sets_check <- setequal(y, 20:11)
+```
+

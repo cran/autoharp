@@ -1,0 +1,13 @@
+---
+title: "Sample Questions 02"
+output: html_document
+---
+
+Create a numeric vector named `X` containing these values:
+
+\[ 1, 3, 5, 7, 9, 11\]
+
+Find the mean of `X`. Your script should generate the following objects:
+
+* `X` -  a vector of length 6.
+* `mean_X` - a vector of length 1, containing the mean of `X`.

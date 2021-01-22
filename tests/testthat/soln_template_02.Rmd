@@ -1,0 +1,27 @@
+---
+title: "test01"
+output: html_document
+---
+
+```{r}
+X <- 1:10
+Y <- LETTERS[1:5]
+Z <- 10:15
+```
+
+
+```{r test02, autoharp.objs=c("X", "Y", "Z"),autoharp.scalars=c("Xmean", "Zmean")}
+Xmean <- mean(X)
+Zmean <- mean(Z)
+```
+
+```{r test03, autoharp.scalars=c("Y1")}
+Y1 <- Y[3] # Note that it is character here.
+```
+
+
+
+
+
+
+

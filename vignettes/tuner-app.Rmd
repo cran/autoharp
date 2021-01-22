@@ -1,0 +1,35 @@
+---
+title: "tuner-app"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{tuner-app}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+  
+When students submit R scripts as homework, they will probably be required 
+to read in some data, perform some analysis and create some plots.
+
+Many times, students use relative paths incorrectly, or use absolute paths. This
+prevents their code from running on our machines. This app was written in the
+spirit of getting students to write code that **others** can run.
+
+To try out the app, you can work with the two solution templates installed 
+with the package. It will use whatever your current working directory as the 
+working directory, so do make sure you have write-access to it.
+
+```{r tuner_demo, eval=FALSE}
+library(autoharp)
+run_tuner("demo", system.file("examples", "soln_templates", normalizePath("."))
+```
+
+

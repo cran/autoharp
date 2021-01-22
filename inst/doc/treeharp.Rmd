@@ -1,0 +1,367 @@
+---
+title: "treeharp"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+bibliography: ref.bib
+vignette: >
+  %\VignetteIndexEntry{treeharp}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(autoharp)
+library(dplyr)
+```
+
+# TreeHarp Class
+
+The TreeHarp S4 class is used to represent an R expression. It can then 
+be manipulated in several ways in order to perform static code analysis of 
+student submissions.
+
+The lintr package does a superb job of parsing R code, but it provides too 
+much detail for a simpler task that the autoharp does. Hence the tokens that the 
+autoharp focuses on are much fewer. For instance, the `(` parentheses are dropped. 
+
+Here is a simple expression. Let us use it to study the elements of a TreeHarp 
+object. Suppose we fit a linear model to variables in a dataset. To create a 
+TreeHarp object from an expression, we provide the expression together with the 
+`quote = TRUE` argument. This is important because method dispatch is performed 
+based on that second argument, not the first! If we were to dispatch on the first,
+R would evalate the expression in order to check its class - thus destroying the 
+expression we intended to capture.
+
+```{r ex1, fig.align='center', fig.width=6}
+tree1 <- TreeHarp(quote(lm(y ~ x1 + x2, data=mydata)), TRUE)
+opar <- par(mar=c(0,0,0,0))
+plot(tree1, vertex.size=25, asp=0.6, vertex.color="gray", vertex.frame.color=NA)
+par(opar)
+```
+
+The autoharp relies on the igraph package for plotting graphs, so as you can see,
+the full set of parameter options can be utilised to create a rich plot for our 
+tree.
+
+## Slots
+
+There are 4 slots in a TreeHarp object. The only compulsory one is the adjList. 
+
+### adjList
+
+This slot contains an adjacency list that represents the tree structure of the 
+code. Nodes in a tree are labelled in Breadth-First Search (BFS) order. Thus 
+the root node has id 1, and does not appear in the adjacency list. The TreeHarp 
+convention is to list each edge only once, as a child. Here's what we mean:
+node 2 in the example above is a neighbour of node 1 and 4, but it only appears 
+under node 1. It does not appear as an adjacent node of node 4 because it is not 
+child of node 4. Terminal nodes (leafs) have a NULL entry in the list.
+
+```{r ex1_adjlist}
+slot(tree1, "adjList")
+```
+
+
+### nodeTypes
+
+If the object was constructed from an R language object, this slot will be 
+automatically populated. It will contain information about the types of nodes 
+in the object. The object in this slot is a data frame with the following columns:
+
+1. *id* (node id). The root node has id 1.
+2. *name*. The name of the node.
+3. *call_status*. A TRUE/FALSE column indicating if the node was a call or not.
+4. *formal_arg*. If the node is not a call, then this column will indicate if it 
+is a formal argument or not. If it is not a call and not a formal argument, it 
+is a symbol representing an R object - we call this an actual argument.
+5. *depth*. This is the depth of the node in the tree. The root of the tree has 
+depth 1.
+
+```{r ex1_nodeTypes}
+slot(tree1, "nodeTypes")
+```
+
+### call
+
+The call slot stores the original expression that was used to construct the 
+TreeHarp object, just in case you need it later.
+
+```{r ex1_call}
+slot(tree1, "call")
+```
+
+### repr
+
+The repr slot contains a string representation of the object. If the original 
+TreeHarp object has been mutilated (using one of the routines below), then 
+it may not be a proper R expression, so this slot stores the best representation of 
+it. This slot is used when the object is printed, or when `show` is called on the 
+S4 object.
+
+```{r ex1_repr}
+tree1
+```
+
+## Methods
+
+As we have already demonstrated, the plot method exists for this class. It relies 
+on the tree layout of igraph package, but additional arguments can be used to 
+customise the plot. For instance, we could use colour to distinguish between
+calls and non-call nodes:
+
+```{r call_vs_non_call, fig.align='center', fig.width=6}
+opar <- par(mar=c(0,0,0,0))
+plot(tree1, vertex.size=25, asp=0.6, vertex.color=tree1@nodeTypes$call_status)
+par(opar)
+```
+
+Here are other methods defined for the TreeHarp class:
+
+* `length`: returns the number of nodes.
+* `names`: returns the node names.
+* `as.matrix`: returns a symmetric matrix of 1's and 0's indicating edges in the tree.
+* `get_parent_id`: returns the parent id of a node.
+* `get_child_ids`: returns the ids of the children of a node.
+* `get_node_types`: returns the nodeTypes slot from a TreeHarp object.
+* `get_adj_list`: returns the adjacency list slot from a TreeHarp object.
+
+# ForestHarp
+
+A ForestHarp is a loosely defined idea, in the sense that there is no such 
+class defined. However, it is utilised fairly commonly when dealing with 
+script submissions from students. The precise definition is a list of 
+TreeHarp objects. It can be created using the `rmd_to_forestharp` function.
+
+
+```{r fh1}
+f1 <- rmd_to_forestharp(system.file("examples", "student_scripts", 
+                                    "qn01_scr_02.R", package="autoharp"))
+length(f1)
+```
+
+From the sample R script above, we would obtain a list of length 2, with each
+element being a separate TreeHarp object. To work with such lists, the package
+provides `fapply`, for applying functions to lists of TreeHarp objects and
+combining them back together again. The function applied to each TreeHarp object
+has to be a function that is specifically for TreeHarp objects. fapply gives you
+options to combine the output from each TreeHarp object in however which way you
+choose.
+
+Suppose that we wished to count the number of times a `for` loop was used in the 
+whole script. Then this would do the trick:
+
+```{r num_for_loops}
+fapply(f1, count_fn_call, pattern="for")
+```
+
+`count_fn_call` is a ForestHarp helper function. `fapply` applies it to each 
+TreeHarp object in the list, and then combines that output into a scalar. By default, 
+it combines them by taking the sum. However, it is possible to specify the 
+combining function, or to just return the uncombined list. Here's an example of 
+the former, returning a logical value instead of the sum:
+
+```{r logical_eg}
+fapply(f1, count_fn_call, pattern="for", combine=TRUE, 
+       combiner_fn = function(x) any(unlist(x) > 0))
+```
+
+In this case, it returns a single TRUE/FALSE, indicating whether a `for` loop
+was present in any of the two expressions.
+
+To return the uncombined list, we can use the following command:
+```{r uncombined_list}
+fapply(f1, count_fn_call, pattern="for", combine=FALSE)
+```
+
+This is the approach used to accommodate static code analysis of student R 
+scripts. The `autoharp` comes with a set of ForestHarp helpers - they are documented 
+on the help page. If you require something more specific for what you intend to 
+extract, you will have to write your own. All it has to do is take in a 
+TreeHarp object and return what you are looking for.
+
+```{r fharp-helpers, eval=FALSE}
+?`forestharp-helpers`
+```
+
+# TreeHarp Routines
+
+## subtree_at
+
+This function returns a subtree. It takes a node number (id) as an argument, 
+and returns a new TreeHarp object rooted at that node. If the subtree is not 
+a legitimate call, then call status cannot be preserved.
+
+```{r subtree_eg}
+th3 <- TreeHarp(quote(a <- f(x, y, g(v, w))), quote=TRUE)
+sub_th <- subtree_at(th3, 3, TRUE) # preserves call status
+sub_th
+```
+
+## generate_all_subtrees
+
+This routine enumerates and prints all subtrees of a TreeHarp object. It 
+follows the algorithm in [@ruskey1981listing]. The method of specifying a 
+subtree is to use a binary array, known as a characteristic array. **The 
+ordering of the nodes is BFS.**
+
+```{r all_subtrees}
+th4 <- TreeHarp(quote(f(x, g(z=2))), quote=TRUE)
+all_trees <- generate_all_subtrees(th4)
+all_trees
+```
+
+## carve_subtree
+
+This function takes a TreeHarp object and a characteristic array as inputs. It 
+returns a TreeHarp object with only the nodes indicated there present.
+
+```{r carve_sub}
+carve_subtree(th4, all_trees[5,])
+```
+
+This routine was meant for internal use initially. Since the returned object is
+not necessarily a legitimate call in R, this function drops the information in
+all other slots, including the nodeTypes and repr.
+
+## is_subtree_rooted_at
+
+This function can be used to check if one tree is rooted at a particular node 
+of another. Take note that only node names are checked, because once a 
+a subtree is created there is no guarantee that a call is preserved, especially 
+when doing similarity of tree calculations.
+
+```{r sub_rooted_at}
+thb1 <- TreeHarp(quote(b(d)), TRUE)
+tha1 <- TreeHarp(quote(a(b(d), c)), TRUE)
+is_subtree_rooted_at(thb1, tha1, 1) # FALSE
+is_subtree_rooted_at(thb1, tha1, 2) # TRUE
+```
+
+## path_to_root
+
+This function identifies the nodes on the path from a node up to the root of a
+TreeHarp object. It returns a characteristic array indicating the nodes on that 
+path up to the root.
+
+```{r path_to_root1}
+ex1 <- quote(x <- f(y, g(5)))
+th1 <- TreeHarp(ex1, TRUE)
+path_to_root(th1, 5)
+```
+
+## get_recursive_index
+
+This function can be used to obtain a recursive call index that can be used to 
+extract a sub-call from an R call (language expression). This is useful when 
+we need to preserve the call, yet extract a subtree.
+
+```{r get_rec_ex}
+ex3 <- quote(x <- f(y = g(3, 4), z=1L))
+t1 <- TreeHarp(ex3, TRUE)
+rec_index <- get_recursive_index(t1, 6)
+ex3[[rec_index + 1]]
+ex3[[get_recursive_index(t1, 3)+1]]
+```
+
+## get_parent_call_id
+
+This function returns the most recent call from a particular node id. Sometimes,
+the parent of a node is a formal argument. If we are interested in the parent 
+call, not the immediate parent, then this function might be what you need.
+
+```{r get_parent_call}
+ex3 <- quote(x <- f(y = g(3, 4), z=1L))
+t1 <- TreeHarp(ex3, TRUE)
+# get the function that calls g:
+get_parent_call_id(t1, 6) 
+#contrast with this:
+get_parent_id(t1, 6)
+```
+
+# Tree Similarity Metrics
+
+One of the ambitions of this package was to detect duplicated lines of code that 
+can be reduced through the efficiencies of R for data analysis. An example of 
+undesirable code would be 
+
+```{r undesirable1, eval=FALSE}
+x1 <- my_function(arg1)
+x2 <- my_function(arg2)
+x3 <- my_function(arg3)
+```
+
+Within R, an `lapply` or `vapply` on `c(arg1, arg2, arg3)` would be 
+more appropriate. In order to detect such code, some form of similarity 
+measures would be appropriate and useful. This section documents some of the 
+similarity measures currently present within the autoharp.
+
+## Jaccard Similarity
+
+The Jaccard index is a value that summarises the similarity between two sets. At 
+it's most basic, it is equal to 
+\[ \text{Jac}(A,B) = \frac{A \cap B}{A \cup B}\]
+
+The weighted index, which is appropriate when there could be duplicate items 
+within each set, is described on 
+[Wikipedia](https://en.wikipedia.org/wiki/Jaccard_index#Weighted_Jaccard_similarity_and_distance).
+
+```{r jac_ex}
+jaccard_treeharp(tha1, thb1)
+```
+
+## Dot Product of All Possible Subtrees
+
+A similarity measure based on counts of all possible subtrees is described in 
+[@collins2002convolution] and [@haussler1999convolution]. That algorithm is 
+implemented here, with some modifications to use brute-force enumeration 
+where necessary. 
+
+To normalise this measure, we divide by the similarity with itself.
+
+```{r k2_ex}
+K2(tha1, thb1)
+# normalised to 0 - 1:
+K2(tha1, thb1)/sqrt(K2(tha1, tha1)* K2(thb1, thb1))
+```
+
+This technique was used in [@song2015computation] to detect plagiarism in 
+source codes.
+
+## Natural Language Processing (NLP) Techniques
+
+Traditional NLP techniques can also be used to compute similarities between 
+student scripts. The function `rmd_to_token_count` provides a count of tokens.
+
+```{r nlp_sims1, eval=FALSE}
+library(tidytext)
+library(text2vec)
+library(tm)
+
+stud_script_paths <- system.file("examples", "student_scripts", package="autoharp")
+stud_script_names <- list.files(stud_script_paths, full.names = TRUE)
+
+token_count_list <- lapply(stud_script_names, rmd_to_token_count)
+token_count_df <- bind_rows(token_count_list)
+#head(token_count_df)
+```
+
+The counts can then be used in a Bag-of-Words model to compute cosine
+similarities, for instance.
+
+```{r nlp_sims2, eval=FALSE}
+dtm_out <- cast_dtm(token_count_df, fname, token, n, tm::weightTfIdf)
+dtm_mat <- as.matrix(dtm_out)
+sim2(dtm_mat)
+#Docs            qn01_scr_01.R qn01_scr_02.R qn02_scr_01.R qn02_scr_02.R
+#  qn01_scr_01.R     1.0000000    0.32776151    0.00000000    0.00000000
+#  qn01_scr_02.R     0.3277615    1.00000000    0.01166493    0.01166493
+#  qn02_scr_01.R     0.0000000    0.01166493    1.00000000    0.57194128
+#  qn02_scr_02.R     0.0000000    0.01166493    0.57194128    1.00000000
+```
+
+# References
