@@ -363,12 +363,12 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <p>The purpose of this package is to assist an instructor in grading R codes. Thus, we begin with a simple example. We describe the assignment, solution file, and two student scripts in the subsequent sections. Following this, we demonstrate how the package can help.</p>
 <p>When the autoharp is installed, a folder called <code>examples</code> containing example question sheets, solution templates and sample student scripts is created at the top level. However, the path to this folder varies according to the OS and the R installation. In order to access the files in this folder, we can use <code>system.file</code>:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">system.file</span>(<span class="st">&quot;examples&quot;</span>, <span class="dt">package=</span><span class="st">&quot;autoharp&quot;</span>)</span>
-<span id="cb1-2"><a href="#cb1-2"></a><span class="co">#&gt; [1] &quot;/tmp/RtmpbOUbEC/Rinst324421cb4a6d9/autoharp/examples&quot;</span></span></code></pre></div>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="co">#&gt; [1] &quot;/tmp/RtmpAnxCCG/Rinst9c3e33437e94/autoharp/examples&quot;</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">list.dirs</span>(<span class="kw">system.file</span>(<span class="st">&quot;examples&quot;</span>, <span class="dt">package=</span><span class="st">&quot;autoharp&quot;</span>))</span>
-<span id="cb2-2"><a href="#cb2-2"></a><span class="co">#&gt; [1] &quot;/tmp/RtmpbOUbEC/Rinst324421cb4a6d9/autoharp/examples&quot;                </span></span>
-<span id="cb2-3"><a href="#cb2-3"></a><span class="co">#&gt; [2] &quot;/tmp/RtmpbOUbEC/Rinst324421cb4a6d9/autoharp/examples/question_sheets&quot;</span></span>
-<span id="cb2-4"><a href="#cb2-4"></a><span class="co">#&gt; [3] &quot;/tmp/RtmpbOUbEC/Rinst324421cb4a6d9/autoharp/examples/soln_templates&quot; </span></span>
-<span id="cb2-5"><a href="#cb2-5"></a><span class="co">#&gt; [4] &quot;/tmp/RtmpbOUbEC/Rinst324421cb4a6d9/autoharp/examples/student_scripts&quot;</span></span></code></pre></div>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="co">#&gt; [1] &quot;/tmp/RtmpAnxCCG/Rinst9c3e33437e94/autoharp/examples&quot;                </span></span>
+<span id="cb2-3"><a href="#cb2-3"></a><span class="co">#&gt; [2] &quot;/tmp/RtmpAnxCCG/Rinst9c3e33437e94/autoharp/examples/question_sheets&quot;</span></span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="co">#&gt; [3] &quot;/tmp/RtmpAnxCCG/Rinst9c3e33437e94/autoharp/examples/soln_templates&quot; </span></span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="co">#&gt; [4] &quot;/tmp/RtmpAnxCCG/Rinst9c3e33437e94/autoharp/examples/student_scripts&quot;</span></span></code></pre></div>
 <p>There are two example question sheets included with the installation of autoharp. In this vignette, we utilise <code>sample_questions_01.Rmd</code> to demonstrate how to use the main functions within the package.</p>
 <div id="sample-questions-01-exact-rmd-worksheet-content" class="section level2">
 <h2>Sample Questions 01 (Exact Rmd Worksheet Content)</h2>
@@ -419,24 +419,26 @@ f(x) =
 <span id="cb4-3"><a href="#cb4-3"></a><span class="co"># retrieve soln template path</span></span>
 <span id="cb4-4"><a href="#cb4-4"></a>soln_template_path &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;examples&quot;</span>, <span class="st">&quot;soln_templates&quot;</span>,  </span>
 <span id="cb4-5"><a href="#cb4-5"></a>                                  <span class="st">&quot;soln_template_01.Rmd&quot;</span>, <span class="dt">package=</span><span class="st">&quot;autoharp&quot;</span>)</span>
-<span id="cb4-6"><a href="#cb4-6"></a><span class="co"># populate solution environment</span></span>
-<span id="cb4-7"><a href="#cb4-7"></a>s_env &lt;-<span class="st"> </span><span class="kw">populate_soln_env</span>(soln_template_path, <span class="dt">pattern=</span><span class="st">&quot;test&quot;</span>, <span class="kw">getwd</span>())</span>
-<span id="cb4-8"><a href="#cb4-8"></a></span>
-<span id="cb4-9"><a href="#cb4-9"></a><span class="co"># retrieve installation-specific filenames of examples</span></span>
-<span id="cb4-10"><a href="#cb4-10"></a>stud_script_paths &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;examples&quot;</span>, <span class="st">&quot;student_scripts&quot;</span>, <span class="dt">package=</span><span class="st">&quot;autoharp&quot;</span>)</span>
-<span id="cb4-11"><a href="#cb4-11"></a>stud_script_names &lt;-<span class="st"> </span><span class="kw">file.path</span>(stud_script_paths, <span class="kw">c</span>(<span class="st">&quot;qn01_scr_01.R&quot;</span>, <span class="st">&quot;qn01_scr_02.R&quot;</span>))</span>
-<span id="cb4-12"><a href="#cb4-12"></a></span>
-<span id="cb4-13"><a href="#cb4-13"></a><span class="co"># run autoharp function &quot;render_one&quot; on student scripts.</span></span>
-<span id="cb4-14"><a href="#cb4-14"></a>corr_out &lt;-<span class="st"> </span><span class="kw">lapply</span>(stud_script_names, render_one, <span class="dt">out_dir =</span> <span class="st">&quot;test_out&quot;</span>,   </span>
-<span id="cb4-15"><a href="#cb4-15"></a>                   <span class="dt">knit_root_dir =</span> <span class="kw">getwd</span>(), <span class="dt">soln_stuff =</span> s_env)</span>
-<span id="cb4-16"><a href="#cb4-16"></a></span>
-<span id="cb4-17"><a href="#cb4-17"></a><span class="co"># combine output, dropping initial columns which pertain to runtime stats.</span></span>
-<span id="cb4-18"><a href="#cb4-18"></a><span class="kw">do.call</span>(<span class="st">&quot;rbind&quot;</span>, corr_out)[, <span class="op">-</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">5</span>)]</span>
-<span id="cb4-19"><a href="#cb4-19"></a><span class="co">#&gt; # A tibble: 2 x 5</span></span>
-<span id="cb4-20"><a href="#cb4-20"></a><span class="co">#&gt;   for_loop mean.X  sd.X lenX  lenfn</span></span>
-<span id="cb4-21"><a href="#cb4-21"></a><span class="co">#&gt;   &lt;lgl&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt;</span></span>
-<span id="cb4-22"><a href="#cb4-22"></a><span class="co">#&gt; 1 FALSE     0.797 0.165 TRUE  NA   </span></span>
-<span id="cb4-23"><a href="#cb4-23"></a><span class="co">#&gt; 2 TRUE      0.472 0.123 FALSE NA</span></span></code></pre></div>
+<span id="cb4-6"><a href="#cb4-6"></a><span class="co"># retrieve installation-specific filenames of examples</span></span>
+<span id="cb4-7"><a href="#cb4-7"></a>stud_script_paths &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="st">&quot;examples&quot;</span>, <span class="st">&quot;student_scripts&quot;</span>, <span class="dt">package=</span><span class="st">&quot;autoharp&quot;</span>)</span>
+<span id="cb4-8"><a href="#cb4-8"></a>stud_script_names &lt;-<span class="st"> </span><span class="kw">file.path</span>(stud_script_paths, <span class="kw">c</span>(<span class="st">&quot;qn01_scr_01.R&quot;</span>, <span class="st">&quot;qn01_scr_02.R&quot;</span>))</span>
+<span id="cb4-9"><a href="#cb4-9"></a></span>
+<span id="cb4-10"><a href="#cb4-10"></a><span class="cf">if</span>(rmarkdown<span class="op">::</span><span class="kw">pandoc_available</span>()) {</span>
+<span id="cb4-11"><a href="#cb4-11"></a>  <span class="co"># populate solution environment</span></span>
+<span id="cb4-12"><a href="#cb4-12"></a>  s_env &lt;-<span class="st"> </span><span class="kw">populate_soln_env</span>(soln_template_path, <span class="dt">pattern=</span><span class="st">&quot;test&quot;</span>, <span class="kw">getwd</span>())</span>
+<span id="cb4-13"><a href="#cb4-13"></a>  </span>
+<span id="cb4-14"><a href="#cb4-14"></a>  <span class="co"># run autoharp function &quot;render_one&quot; on student scripts.</span></span>
+<span id="cb4-15"><a href="#cb4-15"></a>  corr_out &lt;-<span class="st"> </span><span class="kw">lapply</span>(stud_script_names, render_one, <span class="dt">out_dir =</span> <span class="st">&quot;test_out&quot;</span>,   </span>
+<span id="cb4-16"><a href="#cb4-16"></a>                     <span class="dt">knit_root_dir =</span> <span class="kw">getwd</span>(), <span class="dt">soln_stuff =</span> s_env)</span>
+<span id="cb4-17"><a href="#cb4-17"></a>  </span>
+<span id="cb4-18"><a href="#cb4-18"></a>  <span class="co"># combine output, dropping initial columns which pertain to runtime stats.</span></span>
+<span id="cb4-19"><a href="#cb4-19"></a>  <span class="kw">do.call</span>(<span class="st">&quot;rbind&quot;</span>, corr_out)[, <span class="op">-</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">5</span>)]</span>
+<span id="cb4-20"><a href="#cb4-20"></a>}</span>
+<span id="cb4-21"><a href="#cb4-21"></a><span class="co">#&gt; # A tibble: 2 x 5</span></span>
+<span id="cb4-22"><a href="#cb4-22"></a><span class="co">#&gt;   for_loop mean.X  sd.X lenX  lenfn</span></span>
+<span id="cb4-23"><a href="#cb4-23"></a><span class="co">#&gt;   &lt;lgl&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt;</span></span>
+<span id="cb4-24"><a href="#cb4-24"></a><span class="co">#&gt; 1 FALSE     0.800 0.164 TRUE  NA   </span></span>
+<span id="cb4-25"><a href="#cb4-25"></a><span class="co">#&gt; 2 TRUE      0.472 0.123 FALSE NA</span></span></code></pre></div>
 <p>The first column checks if a “for” loop had been used in the function definition. The next two colums contain the mean and sd of the <code>X</code> vectors from the respective students. The last two columns assess if the <code>rf</code> function has only a single argument, and whether the length of the created X is 10,000.</p>
 <p>As we can see, the package correctly detected that student 1 did not use a <code>for</code> loop. The objects created in his script also passed the unit tests. Student 2, on the other hand, used a for loop. The mean and s.d. were also incorrect.</p>
 </div>
@@ -520,13 +522,17 @@ Solution template
 <ol style="list-style-type: decimal">
 <li>First, the solution environment has to be populated. This is where the <code>populate_soln_env</code> from autoharp comes into play. The inputs to this function are the solution script, a pattern that identifies which chunks are test/autoharp chunks, and the directory to knit the solution script in. The function will first run all the code within the solution script and store the objects in an environment. Let’s call this the <strong>soln_env</strong>. In addition, there are two autoharp-specific knitr hooks that will be processed. If, for instance, one of the testthat chunks contains the hook <code>autoharp.objs = c(&quot;X&quot;, &quot;rf&quot;)</code>, then copies of these objects are also placed in the soln_env. These objects can be used in test code. All the chunks whose labels are prefixed with “test” will be extracted and placed in a solution script within a temporary directory. Within this script, all chunks that contain the hook <code>autoharp.scalars</code> will be wrapped within a <code>try</code> expression. At the end of this script, some extra lines will be added, to indicate that certain scalars have to be copied into the student solution environment. The return object from this function is a list of length 2, containing the solution environment, and a path to the solution script. Consider the example above in section 1.4. These are the two items contained in <code>s_env</code>.</li>
 </ol>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">names</span>(s_env)</span>
-<span id="cb8-2"><a href="#cb8-2"></a><span class="co">#&gt; [1] &quot;env&quot;        &quot;test_fname&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="cf">if</span>(rmarkdown<span class="op">::</span><span class="kw">pandoc_available</span>()){</span>
+<span id="cb8-2"><a href="#cb8-2"></a>  <span class="kw">names</span>(s_env)</span>
+<span id="cb8-3"><a href="#cb8-3"></a>}</span>
+<span id="cb8-4"><a href="#cb8-4"></a><span class="co">#&gt; [1] &quot;env&quot;        &quot;test_fname&quot;</span></span></code></pre></div>
 <p>The solution environment contains the following objects:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a><span class="kw">ls</span>(s_env<span class="op">$</span>env, <span class="dt">all.names=</span><span class="ot">TRUE</span>)</span>
-<span id="cb9-2"><a href="#cb9-2"></a><span class="co">#&gt;  [1] &quot;.X&quot;               &quot;.myfilename&quot;      &quot;.rf&quot;              &quot;.scalars_to_keep&quot;</span></span>
-<span id="cb9-3"><a href="#cb9-3"></a><span class="co">#&gt;  [5] &quot;X&quot;                &quot;f1&quot;               &quot;for_loop&quot;         &quot;lenX&quot;            </span></span>
-<span id="cb9-4"><a href="#cb9-4"></a><span class="co">#&gt;  [9] &quot;lenfn&quot;            &quot;mean.X&quot;           &quot;rf&quot;               &quot;sd.X&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a><span class="cf">if</span>(rmarkdown<span class="op">::</span><span class="kw">pandoc_available</span>()){</span>
+<span id="cb9-2"><a href="#cb9-2"></a>  <span class="kw">ls</span>(s_env<span class="op">$</span>env, <span class="dt">all.names=</span><span class="ot">TRUE</span>)</span>
+<span id="cb9-3"><a href="#cb9-3"></a>}</span>
+<span id="cb9-4"><a href="#cb9-4"></a><span class="co">#&gt;  [1] &quot;.X&quot;               &quot;.myfilename&quot;      &quot;.rf&quot;              &quot;.scalars_to_keep&quot;</span></span>
+<span id="cb9-5"><a href="#cb9-5"></a><span class="co">#&gt;  [5] &quot;X&quot;                &quot;f1&quot;               &quot;for_loop&quot;         &quot;lenX&quot;            </span></span>
+<span id="cb9-6"><a href="#cb9-6"></a><span class="co">#&gt;  [9] &quot;lenfn&quot;            &quot;mean.X&quot;           &quot;rf&quot;               &quot;sd.X&quot;</span></span></code></pre></div>
 <p>The contents of the solution script <code>s_env$test_fname</code> are:</p>
 <pre><code>try_out &lt;- try({
 lenX &lt;- (length(X) == length(.X))
@@ -623,17 +629,20 @@ mapply(assign, x=.scalars_to_keep, value=get_objs, MoreArgs = list(envir=.myenv)
 <div id="can-we-run-the-correctness-check-by-hand-i.e.-without-render_one" class="section level3">
 <h3>Can we run the correctness check by hand, i.e. without <code>render_one</code>?</h3>
 <p>Yes, but this takes a little bit of hard-coding. If your solution contains autoharp-scalar chunks, you need to create an environment called <code>.myenv</code>, populate it with the student objects, and pass it to <code>check_correctness</code>. If your test code creates TreeHarp objects from the student solution, you will need to populate <code>.myenv</code> with the student filename too.</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a>.myenv &lt;-<span class="st"> </span><span class="kw">new.env</span>()</span>
-<span id="cb14-2"><a href="#cb14-2"></a>rmarkdown<span class="op">::</span><span class="kw">render</span>(stud_script_names[<span class="dv">2</span>], <span class="dt">output_dir =</span><span class="kw">getwd</span>(), <span class="dt">envir=</span>.myenv)</span>
-<span id="cb14-3"><a href="#cb14-3"></a><span class="co">#&gt; processing file: qn01_scr_02.spin.Rmd</span></span>
-<span id="cb14-4"><a href="#cb14-4"></a><span class="co">#&gt; output file: qn01_scr_02.knit.md</span></span>
-<span id="cb14-5"><a href="#cb14-5"></a><span class="co">#&gt; /usr/lib/rstudio/bin/pandoc/pandoc +RTS -K512m -RTS qn01_scr_02.utf8.md --to html4 --from markdown+autolink_bare_uris+tex_math_single_backslash --output /tmp/RtmpbOUbEC/Rbuild324426759811a/autoharp/vignettes/qn01_scr_02.html --lua-filter /home/viknesh/R/x86_64-pc-linux-gnu-library/4.0/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /home/viknesh/R/x86_64-pc-linux-gnu-library/4.0/rmarkdown/rmarkdown/lua/latex-div.lua --self-contained --standalone --section-divs --template /home/viknesh/R/x86_64-pc-linux-gnu-library/4.0/rmarkdown/rmd/h/default.html --no-highlight --variable highlightjs=1 --variable &#39;theme:bootstrap&#39; --include-in-header /tmp/RtmpVctS4s/rmarkdown-str3248251d1cb0f.html --mathjax --variable &#39;mathjax-url:https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML&#39;</span></span>
-<span id="cb14-6"><a href="#cb14-6"></a><span class="co">#&gt; </span></span>
-<span id="cb14-7"><a href="#cb14-7"></a><span class="co">#&gt; Output created: qn01_scr_02.html</span></span>
-<span id="cb14-8"><a href="#cb14-8"></a>.myenv<span class="op">$</span>.myfilename &lt;-<span class="st"> </span><span class="kw">normalizePath</span>(stud_script_names[<span class="dv">2</span>])</span>
-<span id="cb14-9"><a href="#cb14-9"></a><span class="kw">check_correctness</span>(.myenv, s_env<span class="op">$</span>env, s_env<span class="op">$</span>test_fname)</span>
-<span id="cb14-10"><a href="#cb14-10"></a><span class="co">#&gt;   for_loop    mean.X      sd.X  lenX lenfn</span></span>
-<span id="cb14-11"><a href="#cb14-11"></a><span class="co">#&gt; 1     TRUE 0.4771899 0.1167338 FALSE  TRUE</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a></span>
+<span id="cb14-2"><a href="#cb14-2"></a><span class="cf">if</span>(rmarkdown<span class="op">::</span><span class="kw">pandoc_available</span>()){</span>
+<span id="cb14-3"><a href="#cb14-3"></a>  .myenv &lt;-<span class="st"> </span><span class="kw">new.env</span>()</span>
+<span id="cb14-4"><a href="#cb14-4"></a>  rmarkdown<span class="op">::</span><span class="kw">render</span>(stud_script_names[<span class="dv">2</span>], <span class="dt">output_dir =</span><span class="kw">getwd</span>(), <span class="dt">envir=</span>.myenv)</span>
+<span id="cb14-5"><a href="#cb14-5"></a>  .myenv<span class="op">$</span>.myfilename &lt;-<span class="st"> </span><span class="kw">normalizePath</span>(stud_script_names[<span class="dv">2</span>])</span>
+<span id="cb14-6"><a href="#cb14-6"></a>  <span class="kw">check_correctness</span>(.myenv, s_env<span class="op">$</span>env, s_env<span class="op">$</span>test_fname)</span>
+<span id="cb14-7"><a href="#cb14-7"></a>}</span>
+<span id="cb14-8"><a href="#cb14-8"></a><span class="co">#&gt; processing file: qn01_scr_02.spin.Rmd</span></span>
+<span id="cb14-9"><a href="#cb14-9"></a><span class="co">#&gt; output file: qn01_scr_02.knit.md</span></span>
+<span id="cb14-10"><a href="#cb14-10"></a><span class="co">#&gt; /usr/lib/rstudio/bin/pandoc/pandoc +RTS -K512m -RTS qn01_scr_02.utf8.md --to html4 --from markdown+autolink_bare_uris+tex_math_single_backslash --output /tmp/RtmpAnxCCG/Rbuild9c3e6c59c6a3/autoharp/vignettes/qn01_scr_02.html --lua-filter /home/viknesh/R/x86_64-pc-linux-gnu-library/4.0/rmarkdown/rmarkdown/lua/pagebreak.lua --lua-filter /home/viknesh/R/x86_64-pc-linux-gnu-library/4.0/rmarkdown/rmarkdown/lua/latex-div.lua --self-contained --standalone --section-divs --template /home/viknesh/R/x86_64-pc-linux-gnu-library/4.0/rmarkdown/rmd/h/default.html --no-highlight --variable highlightjs=1 --variable &#39;theme:bootstrap&#39; --include-in-header /tmp/Rtmp8hWxQs/rmarkdown-str9c7e3a9e8993.html --mathjax --variable &#39;mathjax-url:https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML&#39;</span></span>
+<span id="cb14-11"><a href="#cb14-11"></a><span class="co">#&gt; </span></span>
+<span id="cb14-12"><a href="#cb14-12"></a><span class="co">#&gt; Output created: qn01_scr_02.html</span></span>
+<span id="cb14-13"><a href="#cb14-13"></a><span class="co">#&gt;   for_loop    mean.X      sd.X  lenX lenfn</span></span>
+<span id="cb14-14"><a href="#cb14-14"></a><span class="co">#&gt; 1     TRUE 0.4771899 0.1167338 FALSE  TRUE</span></span></code></pre></div>
 <p>If your solution template does not create TreeHarp objects, you do not need the <code>.myfilename</code> variable in <code>.myenv</code>.</p>
 </div>
 </div>

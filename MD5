@@ -1,7 +1,7 @@
-f42ca566f27c79b66750916c3a197798 *DESCRIPTION
+34a2d775a9abd2b85e49dbbc651aaea6 *DESCRIPTION
 5cdd719b0746a553716f8e681e06d14e *LICENSE
 73c84396577451ea3e39be8e8ff12bbc *NAMESPACE
-356dcb4a18e492244970f7e224063a44 *NEWS
+408e046d4a2abd556f5b87de71038284 *NEWS
 f2cf974496372541a199ead6b1154913 *R/as.matrix.R
 2db97bf6433b609617b8f58c4a279896 *R/check_correctness.R
 be4ef2ea46cd6197d746d4a555dbf16e *R/check_rmd.R
@@ -38,9 +38,9 @@ f0db1a0ae325bddd359e35e74a2a9c39 *inst/doc/treeharp.html
 52363520e9e8645c6e0c672b55dc2516 *inst/doc/tuner-app.R
 8e216ade9bef8939dee84bb6af19d2f2 *inst/doc/tuner-app.Rmd
 4c03a143339dfbc4201c4b76449c881e *inst/doc/tuner-app.html
-3c332b62965725e1cd5163abbdccb08b *inst/doc/user-manual.R
-7fa3cd681d589a39a1635bb2b4bfd888 *inst/doc/user-manual.Rmd
-7d15ab0181878107030774f713657b0d *inst/doc/user-manual.html
+872fc3514544e34ee2caa8c6f9794c51 *inst/doc/user-manual.R
+a2cb421e885d8c1818fa56978ca0a0cf *inst/doc/user-manual.Rmd
+4c1fa0d527473bf2af84a7cb21e88494 *inst/doc/user-manual.html
 dbcbaded11c17e7121590b845cbdc4d2 *inst/examples/question_sheets/sample_questions_01.Rmd
 0fc58ca03a16ba7b6f5e80e9f95a8bd7 *inst/examples/question_sheets/sample_questions_02.Rmd
 de58746e13265df796a41abafbfb8672 *inst/examples/soln_templates/soln_template_01.R
@@ -126,9 +126,9 @@ fbc929b2dbad81065f2d2df3c0d57188 *tests/testthat/teardown-01.R
 13f9e54f69abb9ec6aaa78285e1c12a5 *tests/testthat/test-01-tree_routines.R
 0306874325ec4e87a25c1e441e81caf9 *tests/testthat/test-02-th_constructors.R
 13154dbe2cd53353f8d2a2194acb0725 *tests/testthat/test-03-th_manipulations.R
-06b24212aeb55840f23afdd1fc8a6c3e *tests/testthat/test-04-rmd_stuff.R
+52ea5af9e8ffdbffb0a0e0d0e4f1d65d *tests/testthat/test-04-rmd_stuff.R
 a3bcf16500fcb9422d8c2e2f80c76938 *tests/testthat/test-05-tree_kernels.R
-7f642d85a3e2a4486140354c4feb1c5a *tests/testthat/test-06_render_one.R
+50d3e131341b4022e89e197164623f01 *tests/testthat/test-06_render_one.R
 beba5644fbc2395607458a2d650e9d4d *vignettes/inside_render_one.png
 4b48fcb57f82e1a4d9e42f6fbd42d787 *vignettes/instructor_overview.png
 424a055b58ec20fa3cfd5e40ad1b54f1 *vignettes/instructor_workflow_diagram.png
@@ -136,4 +136,4 @@ db8aa3cab3200f46482e7ebc60174ded *vignettes/ref.bib
 6c1d825aaa492898ba4f31f2877ee676 *vignettes/soln_template_diagram.png
 0543d5cca32e810e636c3ebdb537c066 *vignettes/treeharp.Rmd
 8e216ade9bef8939dee84bb6af19d2f2 *vignettes/tuner-app.Rmd
-7fa3cd681d589a39a1635bb2b4bfd888 *vignettes/user-manual.Rmd
+a2cb421e885d8c1818fa56978ca0a0cf *vignettes/user-manual.Rmd
