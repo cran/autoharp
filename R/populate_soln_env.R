@@ -58,6 +58,12 @@ get_expect_calls <- function(fname) {
 #' run and rendered. In this case, a list of length two is returned. If this is 
 #' FALSE (default), then then a list of length three is returned. See the
 #' Return section for more details.
+#' @param output The path to the knitted solution md file. This is usually 
+#' deleted immediately, but sometimes we may want to keep it. This is 
+#' a useful argument to have, especially for building the vignette. This 
+#' argument is passed on to \code{\link[knitr]{knit}}, so please refer to 
+#' that page for the warnings about setting this argument when figures are 
+#' involved.
 #'
 #' @details  Test code should be written in two ways:
 #' \enumerate{
@@ -102,7 +108,8 @@ get_expect_calls <- function(fname) {
 #' @export
 #' @seealso \code{\link{check_correctness}}, \code{\link{render_one}}
 #'
-populate_soln_env <- function(soln_fname, pattern, knit_root_dir, render_only=FALSE) {
+populate_soln_env <- function(soln_fname, pattern, knit_root_dir, 
+                              render_only=FALSE, output=NULL) {
 
   e_soln <- new.env()
   e_soln$.myfilename <- normalizePath(soln_fname)
@@ -110,7 +117,7 @@ populate_soln_env <- function(soln_fname, pattern, knit_root_dir, render_only=FA
     old_root <- knitr::opts_knit$get("root.dir")
     knitr::opts_knit$set(root.dir = knit_root_dir)
   }
-  soln_out <- knitr::knit(soln_fname, quiet=TRUE, envir=e_soln)
+  soln_out <- knitr::knit(soln_fname, quiet=TRUE, envir=e_soln, output=output)
   # print(soln_out)
   if(render_only) {
       return(list(env=e_soln, soln_out=soln_out))
@@ -143,7 +150,7 @@ populate_soln_env <- function(soln_fname, pattern, knit_root_dir, render_only=FA
     if(".scalars_to_keep" %in% names(e_soln)){
     lines_all <- c(lines_all, " ",
                    "get_objs <- mget(.scalars_to_keep, ifnotfound=NA)",   
-                   "mapply(assign, x=.scalars_to_keep, value=get_objs, MoreArgs = list(envir=.myenv))")
+                   "mapply(base::assign, x=.scalars_to_keep, value=get_objs, MoreArgs = list(envir=.myenv))")
     } 
   } else {
     stop("No testing code detected.")

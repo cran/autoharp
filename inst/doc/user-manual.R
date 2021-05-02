@@ -58,10 +58,12 @@ stud_script_names <- file.path(stud_script_paths, c("qn01_scr_01.R", "qn01_scr_0
 
 if(rmarkdown::pandoc_available()) {
   # populate solution environment
-  s_env <- populate_soln_env(soln_template_path, pattern="test", getwd())
+  s_env <- populate_soln_env(soln_template_path, pattern="test", getwd(),
+                             output=tempfile())
   
   # run autoharp function "render_one" on student scripts.
-  corr_out <- lapply(stud_script_names, render_one, out_dir = "test_out",   
+  #corr_out <- lapply(stud_script_names, render_one, out_dir = "test_out",   
+  corr_out <- lapply(stud_script_names, render_one, out_dir = tempdir(),
                      knit_root_dir = getwd(), soln_stuff = s_env)
   
   # combine output, dropping initial columns which pertain to runtime stats.
@@ -125,7 +127,8 @@ if(rmarkdown::pandoc_available()){
 
 if(rmarkdown::pandoc_available()){
   .myenv <- new.env()
-  rmarkdown::render(stud_script_names[2], output_dir =getwd(), envir=.myenv)
+  #rmarkdown::render(stud_script_names[2], output_dir =getwd(), envir=.myenv)
+  rmarkdown::render(stud_script_names[2], output_dir =tempdir(), envir=.myenv)
   .myenv$.myfilename <- normalizePath(stud_script_names[2])
   check_correctness(.myenv, s_env$env, s_env$test_fname)
 }

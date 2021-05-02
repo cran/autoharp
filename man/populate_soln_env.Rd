@@ -4,7 +4,13 @@
 \alias{populate_soln_env}
 \title{Returns solution environment and test code from template.}
 \usage{
-populate_soln_env(soln_fname, pattern, knit_root_dir, render_only = FALSE)
+populate_soln_env(
+  soln_fname,
+  pattern,
+  knit_root_dir,
+  render_only = FALSE,
+  output = NULL
+)
 }
 \arguments{
 \item{soln_fname}{An rmd file containing the unit tests (and others) to be
@@ -23,6 +29,13 @@ knitr::opts_knit$get('root.dir').}
 run and rendered. In this case, a list of length two is returned. If this is 
 FALSE (default), then then a list of length three is returned. See the
 Return section for more details.}
+
+\item{output}{The path to the knitted solution md file. This is usually 
+deleted immediately, but sometimes we may want to keep it. This is 
+a useful argument to have, especially for building the vignette. This 
+argument is passed on to \code{\link[knitr]{knit}}, so please refer to 
+that page for the warnings about setting this argument when figures are 
+involved.}
 }
 \value{
 If render_only is FALSE, a list containing 3 components: the

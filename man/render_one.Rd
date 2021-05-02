@@ -23,7 +23,7 @@ figures.}
 \item{knit_root_dir}{The working directory while knitting the file.}
 
 \item{log_name}{A character string, denoting the log file name. It defaults to
-"render_all.log". If this file is already present in the directory, this
+"render_one.log". If this file is already present in the directory, this
 function will append to it.}
 
 \item{soln_stuff}{This is a list, with components env, test_fname, and

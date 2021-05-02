@@ -8,7 +8,7 @@
 #' figures.
 #' @param knit_root_dir The working directory while knitting the file.
 #' @param log_name A character string, denoting the log file name. It defaults to
-#' "render_all.log". If this file is already present in the directory, this
+#' "render_one.log". If this file is already present in the directory, this
 #' function will append to it.
 #' @param soln_stuff This is a list, with components env, test_fname, and
 #' tt_list. This object is the output of \code{\link{populate_soln_env}}. Set
@@ -36,13 +36,13 @@ render_one <- function(rmd_name, out_dir, knit_root_dir, log_name, soln_stuff,
     
     # Initialise log file.
     if(missing(log_name)){
-        log_name <- "render_all.log"
+        log_name <- "render_one.log"
     }
     out_log <- file.path(out_dir, log_name)
     out_file <- file(out_log, 'a+b')
     time_stamp <- as.character(Sys.time())
     cat('---', file=out_file, append=TRUE)
-    cat('render_all commenced at', time_stamp, file=out_file, append=TRUE)
+    cat('render_one commenced at', time_stamp, file=out_file, append=TRUE)
     cat('---\n', file=out_file, append=TRUE)
     cat('\nStarting on', rmd_name, '\n', file=out_file, append=TRUE)
 

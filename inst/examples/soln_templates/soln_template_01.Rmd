@@ -2,8 +2,7 @@
 title: "Solution Template (01)"
 output: html_document
 ---
-```{r}
-library(testthat)
+```{r test00}
 library(autoharp)
 library(rlang)
 ```

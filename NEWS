@@ -1,3 +1,8 @@
+v0.0.6:
+- allow populate_soln_env to specify where to write the temp knitted output
+- ensure that user-manual.Rmd only writes to tempdir()
+- testthat moved to Suggests
+
 v0.0.5:
 - check for pandoc availability before building vignettes or running tests.
 

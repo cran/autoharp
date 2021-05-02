@@ -284,7 +284,7 @@ run_tuner <- function(app_title, soln_templates_dir, knit_wd,
         #return(p(h5(lib_used_msg), h5(lib_to_install), h5(lib_error), hr()))
       } else {
     	if(!("data.frame" %in% class(htmlUI()$html))) {
-          log_out <- log_summary(file.path(sess_tmp_dir, "render_all.log"))
+          log_out <- log_summary(file.path(sess_tmp_dir, "render_one.log"))
     	  render_error <- paste('Render logs:', utils::tail(log_out$error_message, 1))
     	  #render_error <- paste('Render logs:', htmlUI()$html$message)
     	  #return(p(h6(lib_used_msg), h6(lib_to_install),
@@ -293,7 +293,7 @@ run_tuner <- function(app_title, soln_templates_dir, knit_wd,
                    hr(), h6(render_error)))
         }
         if(htmlUI()$html$run_status[1] == "FAIL") {
-          log_out <- log_summary(file.path(sess_tmp_dir, "render_all.log"))
+          log_out <- log_summary(file.path(sess_tmp_dir, "render_one.log"))
           render_error <- paste('Render logs:', utils::tail(log_out$error_message, 1))
           #print(render_error)
           
