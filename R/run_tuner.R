@@ -46,7 +46,10 @@
 #' }
 #' The full list of available lints can be found here: \code{\link[lintr]{linters}}.
 #'
-#' @import shiny
+#' @importFrom shiny tabPanel uiOutput tableOutput tabsetPanel fluidPage
+#' @importFrom shiny titlePanel fluidRow column wellPanel selectInput fileInput
+#' @importFrom shiny actionButton hr br a reactive isolate renderTable
+#' @importFrom shiny h4 h5 h6 showNotification renderUI p addResourcePath
 #'
 #' @return This function is run for its side-effect.
 #' @export
@@ -137,7 +140,7 @@ run_tuner <- function(app_title, soln_templates_dir, knit_wd,
         ),
         actionButton("goButton", "Check solution!"),
         hr(),
-        tags$small('autoharp solution checker, 2020.', br(),
+        shiny::tags$small('autoharp solution checker, 2020.', br(),
                    'Found a bug? Report it',
                    #a(href='https://github.com/singator/autoharp/issues',
                    a(href='mailto:vik.gopal@nus.edu.sg','here.'))
@@ -192,7 +195,7 @@ run_tuner <- function(app_title, soln_templates_dir, knit_wd,
           file1 <- input$fileupload
           #unlink(sess_tmp_dir, recursive = TRUE)
           
-          progress <- Progress$new(session, min=1, max=10)
+          progress <- shiny::Progress$new(session, min=1, max=10)
           on.exit(progress$close())
           progress$set(message="Checking libraries")
           
@@ -303,7 +306,7 @@ run_tuner <- function(app_title, soln_templates_dir, knit_wd,
         addResourcePath("test", sess_tmp_dir)
         return(p(h6(htmlUI()$used), h6(htmlUI()$install), h6(htmlUI()$error), 
                  hr(), 
-                 tags$iframe(src="test/0.html", height="1000", width="800", frameborder="0")))
+                 shiny::tags$iframe(src="test/0.html", height="1000", width="800", frameborder="0")))
       }
     })
     
@@ -349,7 +352,7 @@ run_tuner <- function(app_title, soln_templates_dir, knit_wd,
   }
   
   ## Create the app object
-  app <- shinyApp(ui, server)
+  app <- shiny::shinyApp(ui, server)
   
   app
   ## Run the app
@@ -379,7 +382,7 @@ get_summary_output <- function (rmd_file, summary_header = "# Summary Output",
     display_chunks <- all_non_chunks[ind:length(all_non_chunks)]
     fp <- file.path(dir, 'summary_chunk_info.Rmd') 
     writeLines(display_chunks, con = fp)
-    summary_df <-withMathJax(includeMarkdown(fp))
+    summary_df <- shiny::withMathJax(shiny::includeMarkdown(fp))
     unlink(fp)
   } else {
     summary_df <- h5(br(), "No summary found")

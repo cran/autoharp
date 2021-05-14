@@ -1,6 +1,6 @@
 Package: autoharp
 Title: Semi-Automatic Grading of R and Rmd Scripts
-Version: 0.0.6
+Version: 0.0.7
 Authors@R: c(
     person("Vik", "Gopal", email="vik.gopal@nus.edu.sg", role=c("aut", "cre")),
     person("Samuel", "Seah", email="samuelseah@u.nus.edu", role="aut"),
@@ -31,7 +31,7 @@ Suggests: readxl, xml2, rvest, formatR, testthat
 SystemRequirements: pandoc (>= 1.14) - http://pandoc.org
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2021-04-30 11:56:55 UTC; viknesh
+Packaged: 2021-05-14 21:39:57 UTC; viknesh
 Author: Vik Gopal [aut, cre],
   Samuel Seah [aut],
   Viknesh Jeya Kumar [aut],
@@ -40,4 +40,4 @@ Author: Vik Gopal [aut, cre],
   National University of Singapore [cph]
 Maintainer: Vik Gopal <vik.gopal@nus.edu.sg>
 Repository: CRAN
-Date/Publication: 2021-05-02 14:00:02 UTC
+Date/Publication: 2021-05-14 22:02:12 UTC

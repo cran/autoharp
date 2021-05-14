@@ -1,3 +1,7 @@
+v0.0.7:
+- purl set to FALSE to prevent R file from being generated.
+- shiny not imported entirely.
+
 v0.0.6:
 - allow populate_soln_env to specify where to write the temp knitted output
 - ensure that user-manual.Rmd only writes to tempdir()

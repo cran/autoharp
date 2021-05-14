@@ -31,11 +31,11 @@ generate_thumbnails <- function(out_dir, html_fname, html_title,
   #cat("<!DOCTYPE html>", "<html>", "<head>", file=overall_con, sep='\n')
   #cat(as.character(tags$meta(charset="UTF-8")), file=overall_con, sep='\n')
   cat(write_css(), write_jscript(), file=overall_con, sep='\n')
-  cat(as.character(tags$title(html_title)), file=overall_con, sep='\n')
+  cat(as.character(shiny::tags$title(html_title)), file=overall_con, sep='\n')
   #cat("</head>", file=overall_con, sep='\n')
   
   cat("<body>", file=overall_con, sep='\n')
-  cat(as.character(tags$h1(html_title)), file=overall_con, sep='\n')
+  cat(as.character(shiny::tags$h1(html_title)), file=overall_con, sep='\n')
   
   # removes the thumbnail html itself.
   h_files <- list.files(out_dir, "*html") %>% 
@@ -59,17 +59,17 @@ generate_thumbnails <- function(out_dir, html_fname, html_title,
       
       all_imgs <- file.path(basename(try_out_files), img_fnames) %>%
         lapply(function(x) 
-          tags$figure(class = "figimg", class = divsize[2],
-          tags$img(src = x, title = x, alt = x))) %>%
+          shiny::tags$figure(class = "figimg", class = divsize[2],
+          shiny::tags$img(src = x, title = x, alt = x))) %>%
         lapply(as.character) %>% unlist() %>% paste(collapse = "\n")
     }
 
     cat(as.character(
-      tags$div(class = "imgContainer", class = divsize[1],
-        tags$figure(
-          HTML(all_imgs),
-          tags$figcaption(
-            tags$a(href=fname, title=fname, 
+      shiny::tags$div(class = "imgContainer", class = divsize[1],
+        shiny::tags$figure(
+          shiny::HTML(all_imgs),
+          shiny::tags$figcaption(
+            shiny::tags$a(href=fname, title=fname, 
                    ifelse(anonymise, paste0("File_Num_", sprintf("%03d", i)), 
                           root_fname))
         ))

@@ -1,5 +1,5 @@
 write_css <- function() {
-  as.character(tags$style(HTML('
+  as.character(shiny::tags$style(shiny::HTML('
     .zoomDiv {
       opacity: 0;
       position: fixed;
@@ -56,10 +56,10 @@ write_css <- function() {
 
 write_jscript <- function(){
   as.character(paste0(
-    tags$script(type="text/javascript", 
+    shiny::tags$script(type="text/javascript", 
                 src="http://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"
     ), "\n",
-    tags$script(type="text/javascript", HTML('
+    shiny::tags$script(type="text/javascript", shiny::HTML('
       $(document).ready(function() {
         $("body").prepend("<div class=\\\"zoomDiv\\\"><img src=\\\"\\\" class=\\\"zoomImg\\\"></div>");
         $("img:not(.zoomImg)").click(function() {

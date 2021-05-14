@@ -118,7 +118,6 @@ populate_soln_env <- function(soln_fname, pattern, knit_root_dir,
     knitr::opts_knit$set(root.dir = knit_root_dir)
   }
   soln_out <- knitr::knit(soln_fname, quiet=TRUE, envir=e_soln, output=output)
-  # print(soln_out)
   if(render_only) {
       return(list(env=e_soln, soln_out=soln_out))
   }
