@@ -45,12 +45,11 @@ get_expect_calls <- function(fname) {
 #' 
 #' Generates objects for checking solution correctness.
 #'
-#' @param soln_fname An rmd file containing the unit tests (and others) to be
+#' @param soln_fname An rmd file containing the checks to be
 #'   run on the student solution.
 #' @param pattern The pattern that identifies which chunks in the solution are 
-#' are test code chunks. This includes testthat chunks and other chunks for 
-#' generating features from student code/objects. If this argument is missing,
-#' the default pattern used is "test"
+#' are testing chunks. If this argument is missing, 
+#' the default pattern used is "test".
 #' @param knit_root_dir The root directory to use for knitting the rmd file. This
 #' argument is optional. If it is missing, it uses the root directory in
 #' knitr::opts_knit$get('root.dir').
@@ -59,19 +58,13 @@ get_expect_calls <- function(fname) {
 #' FALSE (default), then then a list of length three is returned. See the
 #' Return section for more details.
 #' @param output The path to the knitted solution md file. This is usually 
-#' deleted immediately, but sometimes we may want to keep it. This is 
-#' a useful argument to have, especially for building the vignette. This 
+#' deleted immediately, but sometimes we may want to keep it. This 
 #' argument is passed on to \code{\link[knitr]{knit}}, so please refer to 
 #' that page for the warnings about setting this argument when figures are 
 #' involved.
 #'
-#' @details  Test code should be written in two ways:
-#' \enumerate{
-#' \item  As \code{\link[testthat]{test_that}} blocks; the first chunk 
-#' should load the testthat package. There could be more than one test chunk.
-#' \item As chunks with code that generates scalars from students' objects. 
-#' } 
-#' Keep these two types of chunks separate for best results.
+#' @details  Test code should be written in a chunk that generates scalars 
+#' from student objects.
 #' 
 #' The solution file has to be an Rmd file (not an R script), because it 
 #' relies on the autoharp.obj and autoharp.scalars knitr hooks being present.
@@ -88,22 +81,21 @@ get_expect_calls <- function(fname) {
 #'   \item Rename these with the "." prefix in the solution environment
 #'   object.
 #'   \item Extract the lines of test code into a temporary R script.
-#'   \item Wrap those chunks with autoharp.scalars hook with tryCatch.
+#'   \item Wrap those chunks that contain autoharp.scalars hook with tryCatch.
 #'   \item Add a few lines at the bottom of the script to indicate which
 #'   scalars should be kept.
-#'   \item Return the solution environment, path to the R test script, and
-#'   list of test names and expectations in the solution script.
+#'   \item Return the solution environment and path to the R test script.
 #' }
 #' 
 #' Typically, the next step is to call \code{\link{check_correctness}}.
 #' 
-#' @return If render_only is FALSE, a list containing 3 components: the
-#' environment populated by the solution rmd, the path to an R script
-#' containing the test code chunks, and a list of test names and expectations.
+#' @return If render_only is FALSE, a list containing 2 components: the
+#' environment populated by the solution rmd and the path to an R script
+#' containing the test code.
 #'
-#' If render_only is TRUE, then a path to the rendered html file, and the 
-#' solution environment are returned. This latter case is useful for
-#' debugging the solution file.
+#' If render_only is TRUE, then the output list contains the 
+#' aforementioned environment, and the path to the rendered solution file
+#' (html). This option is useful for debugging the solution file.
 #' 
 #' @export
 #' @seealso \code{\link{check_correctness}}, \code{\link{render_one}}
@@ -146,11 +138,11 @@ populate_soln_env <- function(soln_fname, pattern, knit_root_dir,
   if(length(test_code) > 0) {
     test_code <- lapply(test_code, wrap_chunk)
     lines_all <- test_code %>% lapply(function(x) x[2:(length(x) - 1)]) %>% unlist
-    if(".scalars_to_keep" %in% names(e_soln)){
-    lines_all <- c(lines_all, " ",
-                   "get_objs <- mget(.scalars_to_keep, ifnotfound=NA)",   
-                   "mapply(base::assign, x=.scalars_to_keep, value=get_objs, MoreArgs = list(envir=.myenv))")
-    } 
+    # if(".scalars_to_keep" %in% names(e_soln)){
+    # lines_all <- c(lines_all, " ",
+    #                "get_objs <- mget(.scalars_to_keep, ifnotfound=NA)",   
+    #                "mapply(base::assign, x=.scalars_to_keep, value=get_objs, MoreArgs = list(envir=.myenv))")
+    # } 
   } else {
     stop("No testing code detected.")
     lines_all <- c("NULL")

@@ -1,3 +1,8 @@
+v0.0.8:
+- vignettes moved out of package to github pages.
+- temp R script trimmed to exclude assign calls, since we are no longer running it 
+  under test_file, but source() instead.
+
 v0.0.7:
 - purl set to FALSE to prevent R file from being generated.
 - shiny not imported entirely.

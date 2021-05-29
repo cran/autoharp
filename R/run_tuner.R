@@ -50,6 +50,7 @@
 #' @importFrom shiny titlePanel fluidRow column wellPanel selectInput fileInput
 #' @importFrom shiny actionButton hr br a reactive isolate renderTable
 #' @importFrom shiny h4 h5 h6 showNotification renderUI p addResourcePath
+#' @importFrom shiny tags
 #'
 #' @return This function is run for its side-effect.
 #' @export
