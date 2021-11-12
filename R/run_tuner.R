@@ -116,8 +116,7 @@ run_tuner <- function(app_title, soln_templates_dir, knit_wd,
   index_match = match(tabs , full_tabs)
   list_of_tabs <- list1[index_match]
   internalwrapper <- function(...){
-    tabsetPanel(..., id = NULL, selected = NULL, type ="tabs",
-                position = NULL)
+    tabsetPanel(..., id = NULL, selected = NULL, type ="tabs")
   }
   panelOutput <- do.call("internalwrapper",list_of_tabs)
   
@@ -231,7 +230,7 @@ run_tuner <- function(app_title, soln_templates_dir, knit_wd,
               #warning = function(w) return(w))
               #if("warning" %in% class(try_install) ||
               if("error" %in% class(try_install)) {
-                lib_error <- paste('Installation logs:', try_install$message)
+                lib_error <- paste('Installation logs:', conditionMessage(try_install))
                 return(list(used=lib_used_msg, install=lib_to_install, error=lib_error,
                             html=NULL, correctness=NULL))
                 #return(p(h5(lib_used_msg), h5(lib_to_install),

@@ -1,3 +1,17 @@
+v0.0.10:
+- bug in log_summary fixed
+- error messages do not use object$messsage anymore. They use 
+  conditionMessage(object), because some dplyr functions return 
+  conditions, not error objects.
+v0.0.9:
+- position argument warning in run_tuner() handled (argument deprecated in
+  Bootstrap).
+- added URL to package documentation in DESCRIPTION page.
+- bug in render_one (refers to try_out, which is not present anymore), when
+  library could not be installed.
+- extract_chunks in get_libraries and rmd_to_forestharp is now wrapped in a tryCatch call.
+- extract_non_chunks now works if there are no chunks - returns all lines.
+
 v0.0.8:
 - vignettes moved out of package to github pages.
 - temp R script trimmed to exclude assign calls, since we are no longer running it 

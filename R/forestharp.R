@@ -33,11 +33,19 @@
 #' @seealso \code{\link{fapply}}, \code{\link{extract_chunks}},
 #' \code{\link{extract_chunks}}, \code{\link[lintr]{get_source_expressions}}
 rmd_to_forestharp <- function(fname, line_nums = FALSE) {
-  all_chunks <- extract_chunks(fname)
+  #all_chunks <- extract_chunks(fname)
+  all_chunks <- tryCatch(extract_chunks(fname), error = function(e) return(e))
+  if("error" %in% class(all_chunks)){
+      return(NA)
+  }
+
   if(!is.null(all_chunks)){
     all_chunks <- Filter(function(x) length(x) > 2, all_chunks)
     all_lines <- lapply(all_chunks, function(x) x[2:(length(x)-1)])
-    all_exp <- str2expression(unlist(all_lines))
+    all_exp <- tryCatch(str2expression(unlist(all_lines)), error = function(e) return(e))
+    if("error" %in% class(all_exp)){
+        return(NA)
+    }
   } else {
     all_exp <- parse(fname, keep.source = FALSE)
   }

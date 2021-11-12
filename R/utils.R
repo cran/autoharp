@@ -139,7 +139,12 @@ remove_extension <- function(fname) {
 #' @export
 #'
 get_libraries <- function(fname) {
-  all_chunks <- extract_chunks(fname)
+  #all_chunks <- extract_chunks(fname)
+  all_chunks <- tryCatch(extract_chunks(fname), error = function(e) return(e))
+  if("error" %in% class(all_chunks)){
+      return(all_chunks)
+  }
+
   if(!is.null(all_chunks)){
     all_chunks <- Filter(function(x) length(x) > 2, all_chunks)
     all_lines <- lapply(all_chunks, function(x) x[2:(length(x)-1)])
@@ -217,12 +222,15 @@ extract_non_chunks <- function(rmd_name, out_name) {
   all_lines <- readLines(rmd_name, warn=FALSE)
   begin_ids <- which(stringr::str_detect(all_lines, knitr::all_patterns$md$chunk.begin))
   end_ids <- which(stringr::str_detect(all_lines, knitr::all_patterns$md$chunk.end))
-
-  within_chunks <- mapply(":", begin_ids, end_ids, 
-                          SIMPLIFY = FALSE,USE.NAMES = FALSE )
-  within_chunks <- unique(unlist(within_chunks))
-  
-  keep_lines <- all_lines[-within_chunks]
+  if(length(begin_ids) == 0 || length(end_ids) == 0){
+      keep_lines <- all_lines
+  } else {
+      within_chunks <- mapply(":", begin_ids, end_ids, 
+                              SIMPLIFY = FALSE,USE.NAMES = FALSE )
+      within_chunks <- unique(unlist(within_chunks))
+      
+      keep_lines <- all_lines[-within_chunks]
+  }
 
   if(missing(out_name)) {
     return(keep_lines)

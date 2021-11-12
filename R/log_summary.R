@@ -61,7 +61,12 @@ log_summary <- function(log_file) {
           indiv_entry[6] <- need_install %>% sum(na.rm = TRUE)
           #sum(na.rm = TRUE)
       } else {
-        indiv_entry[3] <- this_chunk[-1]
+        if(length(this_chunk[-1] > 0)){
+          indiv_entry[3] <- this_chunk[-1]
+        } else {
+          indiv_entry[3] <- "UNKNOWN"
+          indiv_entry[4:6] <- NA
+        }
       }
       if(indiv_entry[3] == "FAIL") {
         indiv_entry[4] <- this_chunk[(which(stringr::str_detect(this_chunk, "FAIL"))+1):length(this_chunk)] %>%

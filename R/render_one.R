@@ -80,7 +80,7 @@ render_one <- function(rmd_name, out_dir, knit_root_dir, log_name, soln_stuff,
       cat('Libraries used: \n', file=out_file, append=TRUE)
       status <- "FAIL"
       cat(rmd_name, ":", status, "\n", file=out_file, append=TRUE)
-      cat(lib_used$message, '\n', file=out_file, append=TRUE)
+      cat(conditionMessage(lib_used), '\n', file=out_file, append=TRUE)
       out_df <- dplyr::bind_cols(out_df, run_status = status)
       return(out_df)
     }
@@ -101,7 +101,7 @@ render_one <- function(rmd_name, out_dir, knit_root_dir, log_name, soln_stuff,
         if("error" %in% class(try_install)) {
           status <- "FAIL"
           cat(rmd_name, ":", status, "\n", file=out_file, append=TRUE)
-          cat(try_out$message, '\n', file=out_file, append=TRUE)
+          cat(conditionMessage(try_install), '\n', file=out_file, append=TRUE)
           out_df <- dplyr::bind_cols(out_df, run_status = status)
           return(out_df)
         }
@@ -137,7 +137,7 @@ render_one <- function(rmd_name, out_dir, knit_root_dir, log_name, soln_stuff,
     } else if("error" %in% class(try_out)) {
       status <- "FAIL"
       cat(rmd_name, ":", status, "\n", file=out_file, append=TRUE)
-      cat(try_out$message, '\n', file=out_file, append=TRUE)
+      cat(conditionMessage(try_out), '\n', file=out_file, append=TRUE)
       out_df <- dplyr::bind_cols(out_df, run_status = status)
       return(out_df)
     } else {
@@ -160,7 +160,7 @@ render_one <- function(rmd_name, out_dir, knit_root_dir, log_name, soln_stuff,
         if("error" %in% class(corr_out)){
           status <- "FAIL"
           cat(rmd_name, ":", status, "\n", file=out_file, append=TRUE)
-          cat(corr_out$message, '\n', file=out_file, append=TRUE)
+          cat(conditionMessage(corr_out), '\n', file=out_file, append=TRUE)
           out_df <- dplyr::bind_cols(out_df, run_status = status)
           return(out_df)
         }
