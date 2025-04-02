@@ -65,6 +65,7 @@ get_parent_id2 <- function(adj_list, at_node) {
 #'
 #' @return An object of class TreeHarp.
 #' @export
+#' @importFrom methods is
 #' 
 #' @details This is meant for internal use, so the nodeTypes slot is silently
 #' dropped, unless preserve_call is set to TRUE
@@ -75,7 +76,7 @@ get_parent_id2 <- function(adj_list, at_node) {
 #' st <- subtree_at(TreeHarp(th3), 4)
 #' plot(st)
 subtree_at <- function(obj, at_node, preserve_call=FALSE) {
-  if(class(obj) != "TreeHarp"){
+  if(!is(obj, "TreeHarp")) {  
     stop("object should be of class TreeHarp")
   }
   if(!preserve_call) {
@@ -102,7 +103,7 @@ subtree_at <- function(obj, at_node, preserve_call=FALSE) {
     }
     return(TreeHarp(sub_list))
   } else {
-    if("logical" %in% class(obj@call)){
+    if(is(obj@call, "logical")){
       stop("TreeHarp should be from a language object.")
     }
     th_call <- obj@call
@@ -366,6 +367,7 @@ generate_all_subtrees <- function(th){
 #' @return An object of class TreeHarp.
 #' @details This returns an error if the sub-tree does not define a new tree.
 #' @export
+#' @importFrom methods is
 #'
 #' @examples
 #' th3 <- list(a= c(2L,3L,4L), b=NULL, c=c(5L, 6L), d=7L, e=NULL, f=NULL, g=NULL)
@@ -378,7 +380,7 @@ carve_subtree <- function(obj, char_arr) {
   out_mat <- th_mat[which(char_arr == 1), which(char_arr == 1), drop=FALSE]
   #TreeHarp(out_mat)
   nT <- get_node_types(obj)
-  if(class(nT) %in% "data.frame"){
+  if( is(nT, "data.frame") ){
     nT <- nT[which(char_arr==1), ]
     nT$id <- 1:nrow(nT)
     out_obj <-  tryCatch(new("TreeHarp", adjList = matrix_2_adj_list(out_mat),
@@ -389,7 +391,7 @@ carve_subtree <- function(obj, char_arr) {
                          error = function(e) return(e))
   }
 
-  if("error" %in% class(out_obj)){
+  if(is(out_obj, "error")){
     stop("Selected nodes do not define a tree.")
   }
   return(out_obj)
@@ -452,6 +454,7 @@ get_levels <- function(adj_list) {
 #' @return A logical value indicating if x is a sub-tree of y, rooted at
 #' at_node.
 #' @export
+#' @importFrom methods is
 #'
 #' @examples
 #' thb1 <- TreeHarp(list(b=2, d=NULL))
@@ -459,7 +462,7 @@ get_levels <- function(adj_list) {
 #' is_subtree_rooted_at(thb1, tha1, 1) # FALSE
 #' is_subtree_rooted_at(thb1, tha1, 2) # TRUE
 is_subtree_rooted_at <- function(x, y, at_node) {
-  if(class(x) != "TreeHarp" || class(y) != "TreeHarp"){
+  if(  !is(x, "TreeHarp") || !is(y, "TreeHarp")){
     stop("objects should both be of class TreeHarp")
   }
   y_sub <- subtree_at(y, at_node)
@@ -714,6 +717,7 @@ find_branch_num <- function(th, child_id, ancestor_id) {
 #'
 #' @return A vector of indices, that can be used (together with "[[") to obtain a 
 #' sub-call
+#' @importFrom methods is
 #' @export
 #'
 #' @examples
@@ -724,7 +728,7 @@ find_branch_num <- function(th, child_id, ancestor_id) {
 #' ex3[[get_recursive_index(t1, 3)+1]]
 get_recursive_index <- function(th, node_id) {
   node_types <- get_node_types(th)
-  if((class(node_types)[1] == "logical") || (!node_types$call_status[node_id])) {
+  if( is(node_types, "logical") || (!node_types$call_status[node_id])) {
     return(NA)
   }
   call_status <- node_types$call_status
@@ -762,6 +766,7 @@ get_recursive_index <- function(th, node_id) {
 #' walk up the branches till we reach a function call.
 #' 
 #' @return An integer corresponding to the node id of the calling function.
+#' @importFrom methods is
 #' @export
 #'
 #' @seealso \code{\link{get_parent_id}}
@@ -775,7 +780,7 @@ get_recursive_index <- function(th, node_id) {
 #' get_parent_id(t1, 6)
 get_parent_call_id <- function(x, node_id) {
   node_types <- get_node_types(x)
-  if(class(node_types)[1] == "logical") {
+  if( is(node_types, "logical") ){
     return(NA)
   }
   call_status <- node_types$call_status

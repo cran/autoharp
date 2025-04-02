@@ -67,27 +67,27 @@ valid.
 }
 \section{Methods (by generic)}{
 \itemize{
-\item \code{TreeHarp}: A constructor for TreeHarp.
+\item \code{TreeHarp(logical)}: A constructor for TreeHarp.
 
 Converts either adjacency list or matrix into a TreeHarp object.
 
-\item \code{TreeHarp}: A constructor for TreeHarp.
+\item \code{TreeHarp(missing)}: A constructor for TreeHarp.
 
 Converts language object into a TreeHarp object.
 
-\item \code{length}: To get the length of a tree.
+\item \code{length(TreeHarp)}: To get the length of a tree.
 
 The length of the tree refers to the number of nodes in the tree.
 
-\item \code{show}: To print a tree representation.
+\item \code{show(TreeHarp)}: To print a tree representation.
 
 A string representation of a TreeHarp object.
 
-\item \code{names}: To get tree labels
+\item \code{names(TreeHarp)}: To get tree labels
 
 This function returns the node labels of the tree.
-}}
 
+}}
 \section{Slots}{
 
 \describe{

@@ -2,6 +2,7 @@
 % Please edit documentation in R/autoharp.R
 \docType{package}
 \name{autoharp}
+\alias{autoharp-package}
 \alias{autoharp}
 \title{autoharp: Semi-Automatic Grading of R and Rmd Scripts}
 \description{
@@ -20,3 +21,27 @@ R script/Rmd submissions from students.
 The user manuals can be found at \url{https://singator.github.io/autoharp-docs/}
 }
 
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://singator.github.io/autoharp-docs/}
+}
+
+}
+\author{
+\strong{Maintainer}: Vik Gopal \email{vik.gopal@nus.edu.sg}
+
+Authors:
+\itemize{
+  \item Samuel Seah \email{samuelseah@u.nus.edu}
+  \item Viknesh Jeya Kumar \email{viknesh@u.nus.edu}
+  \item Gabriel Ang \email{gabrielang@u.nus.edu}
+}
+
+Other contributors:
+\itemize{
+  \item Ruofan Liu \email{kelseyliu1998@gmail.com} [contributor]
+  \item National University of Singapore [copyright holder]
+}
+
+}

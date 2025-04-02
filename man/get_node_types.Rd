@@ -24,8 +24,8 @@ TreeHarp object.
 }
 \section{Methods (by class)}{
 \itemize{
-\item \code{TreeHarp}: A getter.
+\item \code{get_node_types(TreeHarp)}: A getter.
 
 Allows user to extract the node types of a treeharp object.
-}}
 
+}}

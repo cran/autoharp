@@ -35,7 +35,7 @@ not an Rmd, it is assumed to be an R script. This script is then supplied to
 \link{parse}. In either case, a parsing error here could cause the function to 
 fail.
 
-Line numbers are extracted using \code{\link{get_source_expressions}} from
+Line numbers are extracted using \code{\link[lintr]{get_source_expressions}} from
 the lintr package.
 }
 \seealso{

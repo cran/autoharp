@@ -25,9 +25,7 @@ argument is optional. If it is missing, it uses the root directory in
 knitr::opts_knit$get('root.dir').}
 
 \item{render_only}{A logical value. If this is TRUE, then the solution is
-run and rendered. In this case, a list of length two is returned. If this is 
-FALSE (default), then then a list of length three is returned. See the
-Return section for more details.}
+run, rendered and returned. Otherwise the rendered html is deleted.}
 
 \item{output}{The path to the knitted solution md file. This is usually 
 deleted immediately, but sometimes we may want to keep it. This 
@@ -40,7 +38,7 @@ If render_only is FALSE, a list containing 2 components: the
 environment populated by the solution rmd and the path to an R script
 containing the test code.
 
-If render_only is TRUE, then the output list contains the 
+If render_only is TRUE, then the output list consists of the 
 aforementioned environment, and the path to the rendered solution file
 (html). This option is useful for debugging the solution file.
 }
@@ -56,7 +54,7 @@ relies on the autoharp.obj and autoharp.scalars knitr hooks being present.
 
 In addition, if it is required that a solution object is to be tested against
 the analogous object within the student environment, these objects should be 
-listed within the autoharp option of a code chunk. These objects will be 
+listed within the autoharp.objs option of a code chunk. These objects will be 
 copied with the "." preffix.
 
 Here is an overview of how the function works:
@@ -67,8 +65,6 @@ Here is an overview of how the function works:
   object.
   \item Extract the lines of test code into a temporary R script.
   \item Wrap those chunks that contain autoharp.scalars hook with tryCatch.
-  \item Add a few lines at the bottom of the script to indicate which
-  scalars should be kept.
   \item Return the solution environment and path to the R test script.
 }
 

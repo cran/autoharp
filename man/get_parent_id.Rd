@@ -27,15 +27,15 @@ The generic method definition for getting parent node id.
 }
 \section{Methods (by class)}{
 \itemize{
-\item \code{TreeHarp}: Obtain parent node id.
+\item \code{get_parent_id(TreeHarp)}: Obtain parent node id.
 
 Extracts parent id of a node from a TreeHarp object.
 
-\item \code{list}: Obtain parent node id.
+\item \code{get_parent_id(list)}: Obtain parent node id.
 
 Extracts parent id of a node from an adjacency list object.
-}}
 
+}}
 \seealso{
 \code{\link{get_child_ids}}
 }

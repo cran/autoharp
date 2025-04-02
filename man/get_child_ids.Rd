@@ -26,17 +26,17 @@ The generic method definition for getting child node ids.
 }
 \section{Methods (by class)}{
 \itemize{
-\item \code{TreeHarp}: Obtain child nodes.
+\item \code{get_child_ids(TreeHarp)}: Obtain child nodes.
 
 Allows user to extract the child nodes from a specified node from TreeHarp
 object.
 
-\item \code{list}: Obtain child nodes.
+\item \code{get_child_ids(list)}: Obtain child nodes.
 
 Allows user to extract the child nodes from a specified node from an 
 adjacency list.
-}}
 
+}}
 \seealso{
 \code{\link{get_parent_id}}
 }

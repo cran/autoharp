@@ -91,7 +91,7 @@ These are examples of functions that be called on a list of TreeHarp
 }
 \section{Functions}{
 \itemize{
-\item \code{count_self_fn}: Counts the number of self-defined functions.
+\item \code{count_self_fn()}: Counts the number of self-defined functions.
 
 This helper counts the number of self-defined functions. It excludes
 lambda functions. It returns an integer scalar.
@@ -99,13 +99,13 @@ lambda functions. It returns an integer scalar.
 As long as the function \code{function} was called and assigned, it will be
 counted.
 
-\item \code{count_lam_fn}: Counts the number of anonymous functions.
+\item \code{count_lam_fn()}: Counts the number of anonymous functions.
 
 Counts the number of anonymous functions, typically used in sapply, etc. It
 returns an integer scalar. As long as the function \code{function} was
 called but \emph{not} assigned, it will be counted here.
 
-\item \code{count_fn_call}: Counts the number of function calls that match a pattern.
+\item \code{count_fn_call()}: Counts the number of function calls that match a pattern.
 
 This helper counts the number of function calls that match a pattern. It
 returns a count, i.e. an integer vector of length 1.
@@ -113,64 +113,64 @@ returns a count, i.e. an integer vector of length 1.
 If \code{pkg_name} is provided instead of \code{pattern}, then this function
 counts the number of function calls from that package.
 
-\item \code{extract_fn_call}: Extracts function calls as a string.
+\item \code{extract_fn_call()}: Extracts function calls as a string.
 
 Extracts the function calls that match a pattern. It returns a character
 vector. Remember to set \code{combine = FALSE} when calling
 \code{\link{fapply}} with it.
 
-\item \code{extract_formal_args}: Extracts function formal arguments called.
+\item \code{extract_formal_args()}: Extracts function formal arguments called.
 
 Extracts the function \emph{formal} arguments from functions with a given
 name. The name must match the function name exactly. This returns a character
 vector or NULL, if no formal arguments are used.
 
-\item \code{extract_assigned_objects}: Extracts names of assigned objects
+\item \code{extract_assigned_objects()}: Extracts names of assigned objects
 
 Extracts the names of assigned objects. This was written to assist in
 detecting missed opportunities to use the pipe operator.
 
-\item \code{extract_actual_args}: Extracts actual argument names
+\item \code{extract_actual_args()}: Extracts actual argument names
 
 Extracts the actual arguments from an expression, not the formal
 arguments. It only returns syntactic literals. It should be improved
 to return the actual arguments for a specified function so that something
 similar to \code{extract_assigned_objects} could be returned.
 
-\item \code{detect_growing}: Detects if a vector is being grown.
+\item \code{detect_growing()}: Detects if a vector is being grown.
 
 It detects if there is an expression of form: x <- c(x, new_val). This is
 generally bad programming practice
 
-\item \code{detect_for_in_fn_def}: Detects if a for loop is present within a function
+\item \code{detect_for_in_fn_def()}: Detects if a for loop is present within a function
 
 It detects if a for loop is present within a function definition.
 
-\item \code{count_fn_in_fn}: Count use of a function within another.
+\item \code{count_fn_in_fn()}: Count use of a function within another.
 
 It counts the number of times a function is used within another.
 
-\item \code{detect_fn_call_in_for}: Detect for loop to call a function
+\item \code{detect_fn_call_in_for()}: Detect for loop to call a function
 
 Checks if a function has been called within a for loop.
 
-\item \code{extract_self_fn}: Extract names of functions defined by user.
+\item \code{extract_self_fn()}: Extract names of functions defined by user.
 
 Extracts names of user-defined functions. They may not all look nice, because
 sum functions may be anonymous functions. This function needs to be improved.
 
-\item \code{detect_fn_arg}: Was a function called with a particular argument?
+\item \code{detect_fn_arg()}: Was a function called with a particular argument?
 
 Checks if a function was called with a particular argument, which could be
 the formal or actual one. The immediate child of the function call node is
 checked.
 
-\item \code{detect_nested_for}: Was a nested "for" loop called anywhere within the code?
+\item \code{detect_nested_for()}: Was a nested "for" loop called anywhere within the code?
 
 Checks if a nested for-loop was called anywhere within the code. This returns
 a logical scalar for each TreeHarp object given.
-}}
 
+}}
 \examples{
 # Dummy trees
 th1 <- TreeHarp(quote(X <- rnorm(10, mean=0.9, sd=4)), TRUE)

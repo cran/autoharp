@@ -23,8 +23,8 @@ TreeHarp object.
 }
 \section{Methods (by class)}{
 \itemize{
-\item \code{TreeHarp}: A getter.
+\item \code{get_adj_list(TreeHarp)}: A getter.
 
 Allows user to extract the adjacency list of a treeharp object.
-}}
 
+}}

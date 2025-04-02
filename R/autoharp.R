@@ -13,6 +13,5 @@
 #' 
 #' The user manuals can be found at \url{https://singator.github.io/autoharp-docs/}
 #'
-#' @docType package
 #' @name autoharp
-NULL
+"_PACKAGE"

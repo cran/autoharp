@@ -13,17 +13,18 @@
 #' before the rooting takes place. 
 #'
 #' @return A TreeHarp object
+#' @importFrom methods is
 #' @export
 #' 
 join_treeharps <- function(...) {
   # remove NA trees
   all_trees <- c(...)
-  all_trees <- Filter(function(x) class(x) == "TreeHarp", all_trees)
+  all_trees <- Filter(function(x) is(x, "TreeHarp"), all_trees)
   all_trees_info <- NULL
   
   for(ii in 1:length(all_trees)) {
     tmp <- get_node_types(all_trees[[ii]])
-    if(class(tmp) == "logical" && is.na(tmp))
+    if(is(tmp, "logical") && is.na(tmp))
       stop("Need node type information..")
     tmp$tree_id <- ii
     all_trees_info <- rbind(all_trees_info, tmp)

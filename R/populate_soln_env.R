@@ -14,33 +14,6 @@ wrap_chunk <- function(chunk) {
   new_chunk
 }
 
-# Extracts the name of unit test (using autoharp!!)
-get_expect_calls_from_tt <- function(th) {
-  nt <- get_node_types(th)
-  expect_calls <- extract_fn_call(th, "expect_")
-  if(length(expect_calls) > 0) {
-    node_ids <- which(nt$name %in% expect_calls)
-    expect_names <- vapply(node_ids, 
-                           function(x) {   
-                             st <- subtree_at(th, x, TRUE)
-                             paste0(deparse(slot(st, "call")), collapse="")
-                             }, 
-                           FUN.VALUE = "character")
-    return(expect_names)
-  } else {
-    return(NULL)
-  }
-}
-
-get_expect_calls <- function(fname) {
-  r1 <- rmd_to_forestharp(fname, FALSE)
-  r1 <- Filter(function(x) x@nodeTypes$name[1] == "test_that", r1)
-  test_names <- vapply(r1, function(x) x@nodeTypes$name[2], "character")
-  l_expect_calls <- lapply(r1, get_expect_calls_from_tt)
-  names(l_expect_calls) <- test_names
-  l_expect_calls
-}
-
 #' Returns solution environment and test code from template.
 #' 
 #' Generates objects for checking solution correctness.
@@ -54,9 +27,7 @@ get_expect_calls <- function(fname) {
 #' argument is optional. If it is missing, it uses the root directory in
 #' knitr::opts_knit$get('root.dir').
 #' @param render_only A logical value. If this is TRUE, then the solution is
-#' run and rendered. In this case, a list of length two is returned. If this is 
-#' FALSE (default), then then a list of length three is returned. See the
-#' Return section for more details.
+#' run, rendered and returned. Otherwise the rendered html is deleted.
 #' @param output The path to the knitted solution md file. This is usually 
 #' deleted immediately, but sometimes we may want to keep it. This 
 #' argument is passed on to \code{\link[knitr]{knit}}, so please refer to 
@@ -71,7 +42,7 @@ get_expect_calls <- function(fname) {
 #' 
 #' In addition, if it is required that a solution object is to be tested against
 #' the analogous object within the student environment, these objects should be 
-#' listed within the autoharp option of a code chunk. These objects will be 
+#' listed within the autoharp.objs option of a code chunk. These objects will be 
 #' copied with the "." preffix.
 #' 
 #' Here is an overview of how the function works:
@@ -82,8 +53,6 @@ get_expect_calls <- function(fname) {
 #'   object.
 #'   \item Extract the lines of test code into a temporary R script.
 #'   \item Wrap those chunks that contain autoharp.scalars hook with tryCatch.
-#'   \item Add a few lines at the bottom of the script to indicate which
-#'   scalars should be kept.
 #'   \item Return the solution environment and path to the R test script.
 #' }
 #' 
@@ -93,7 +62,7 @@ get_expect_calls <- function(fname) {
 #' environment populated by the solution rmd and the path to an R script
 #' containing the test code.
 #'
-#' If render_only is TRUE, then the output list contains the 
+#' If render_only is TRUE, then the output list consists of the 
 #' aforementioned environment, and the path to the rendered solution file
 #' (html). This option is useful for debugging the solution file.
 #' 

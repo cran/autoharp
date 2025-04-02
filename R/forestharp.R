@@ -26,16 +26,17 @@
 #' \link{parse}. In either case, a parsing error here could cause the function to 
 #' fail.
 #' 
-#' Line numbers are extracted using \code{\link{get_source_expressions}} from
+#' Line numbers are extracted using \code{\link[lintr]{get_source_expressions}} from
 #' the lintr package.
 #' 
+#' @importFrom methods is
 #' @export
 #' @seealso \code{\link{fapply}}, \code{\link{extract_chunks}},
 #' \code{\link{extract_chunks}}, \code{\link[lintr]{get_source_expressions}}
 rmd_to_forestharp <- function(fname, line_nums = FALSE) {
   #all_chunks <- extract_chunks(fname)
   all_chunks <- tryCatch(extract_chunks(fname), error = function(e) return(e))
-  if("error" %in% class(all_chunks)){
+  if( is(all_chunks, "error") ){
       return(NA)
   }
 
@@ -43,7 +44,7 @@ rmd_to_forestharp <- function(fname, line_nums = FALSE) {
     all_chunks <- Filter(function(x) length(x) > 2, all_chunks)
     all_lines <- lapply(all_chunks, function(x) x[2:(length(x)-1)])
     all_exp <- tryCatch(str2expression(unlist(all_lines)), error = function(e) return(e))
-    if("error" %in% class(all_exp)){
+    if( is(all_exp, "error") ){
         return(NA)
     }
   } else {
@@ -105,6 +106,7 @@ rmd_to_forestharp <- function(fname, line_nums = FALSE) {
 #' @return A vector, list or a single value. If TFUN returned an error for a 
 #' particular TreeHarp, that component in the list or vector would be NA. This 
 #' input vector or list will then be combined by combiner_fn.
+#' @importFrom methods is
 #' @export
 #' 
 #' @examples 
@@ -127,7 +129,7 @@ fapply <-  function(fharp, TFUN, combine = TRUE, combiner_fn, ...) {
   }
   
   f_wrap <- function(x, ...) {
-    if(class(x)!= "TreeHarp"){
+    if(!is(x, "TreeHarp")){
       return(NA)
     }
     # trycatch it here.

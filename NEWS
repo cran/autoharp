@@ -1,8 +1,17 @@
+v0.0.12:
+- fixed missing link
+- replaced class(x) == "string" with use of is( ) function.
+
+v0.0.11:
+- removed examplify_to_r
+- added extract_section_text function
+
 v0.0.10:
 - bug in log_summary fixed
 - error messages do not use object$messsage anymore. They use 
   conditionMessage(object), because some dplyr functions return 
   conditions, not error objects.
+
 v0.0.9:
 - position argument warning in run_tuner() handled (argument deprecated in
   Bootstrap).
