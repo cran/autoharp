@@ -1,14 +1,14 @@
-53471284319ed82019624400352c6f8a *DESCRIPTION
+dc01865a7bff3c19e70709aa5ced7328 *DESCRIPTION
 5cdd719b0746a553716f8e681e06d14e *LICENSE
 7174133d28a584a45217a882cd7f76af *NAMESPACE
-f50afe5b856e141902991e3bd71eb8f5 *NEWS
+c232fc582acfa8713d335a19708aa46b *NEWS
 f2cf974496372541a199ead6b1154913 *R/as.matrix.R
 b5de265db343e284f0990bfed0181af8 *R/autoharp.R
 2db97bf6433b609617b8f58c4a279896 *R/check_correctness.R
 be4ef2ea46cd6197d746d4a555dbf16e *R/check_rmd.R
 a12a69ccfcbbbf152638e349de58f129 *R/check_runtime.R
 7f2e82facae5582f680776a8061bb191 *R/count_lints.R
-e33c703903b4dbe2998c6da3609ea30c *R/env_size.R
+ca066f052808f543350b0607d7fe17a4 *R/env_size.R
 108923abbba052fbb00748183a84659e *R/extracton_section_text.R
 661e87f4cd43677720f3e8f4f92774f8 *R/forestharp.R
 5515462004ae3b2c1394bbdc57005900 *R/forestharp_helpers.R
@@ -21,7 +21,7 @@ a955bc1ad78b63d060f7f62fa0ac997b *R/log_summary.R
 a32e06658afa1867a15df6e82686572e *R/populate_soln_env.R
 1eca625b82d9f8dc95c5568282a423f6 *R/render_one.R
 4ce8627d3fb0be7aea29da0dff255054 *R/reset_path.R
-5a99152210aa5c8f0485e494a00d123e *R/run_tuner.R
+2d7531d4fd70fda6c1f0ec8f41a17dfc *R/run_tuner.R
 c16ceb8a2b2fb6f910a1cb6a3dcce870 *R/th_getter-length.R
 5ab56ece605484faa1a234b7526badfc *R/to_BFS.R
 cf6e4343a825890d50d9f69d1ba6e404 *R/tree_kernel.R
@@ -43,7 +43,7 @@ a5da6d8041fdb395b984b6a6ad2e3a16 *inst/examples/student_scripts/qn02_scr_01.R
 afa9a8ec4196fb6cbc6dc8e0847f9071 *man/TreeHarp-class.Rd
 d9caf27745ee3e46e9e8ac7a716be6b6 *man/adj_list_2_matrix.Rd
 56a57bbb1f51ffbc36a57d0a23027a5b *man/as.matrix.Rd
-8bf36fde3dfa2c8d29630b7eea1b5d5b *man/autoharp.Rd
+fff97b4e216a3fbf0072b21b09aee690 *man/autoharp.Rd
 86159ed43805afddbc6864145ce45372 *man/carve_mst.Rd
 7d8525928cef5e3f3cae244b6b04df9e *man/carve_subtree.Rd
 bccc4f521492b341bae471058ecc54cc *man/check_correctness.Rd
@@ -53,7 +53,7 @@ d9213d64d993384472b64f37fac93919 *man/clean_dir.Rd
 04986d1cf9e105f44b7707f09c8dfcdb *man/copy_e2e.Rd
 7248cb3dba62ff4e9985d07cb94035d9 *man/count_lints_all.Rd
 8aa870d2e12c623fc9cfcd584fc961f1 *man/count_lints_one.Rd
-69fe889493fa420ff3a89771d96cb408 *man/env_size.Rd
+e390efc05ad7b85b58087e150594467a *man/env_size.Rd
 a5cb074806b984229ee3a41c8f2869a4 *man/extract_chunks.Rd
 fbc0e0fca1e42aaa690df8ed20bcb3c1 *man/extract_non_chunks.Rd
 9ec3b906f9b2321d3fa0359b99268cba *man/extract_section_text.Rd
@@ -96,7 +96,7 @@ ba499961bbff35f7dc115465bd6c25e6 *man/prune_depth.Rd
 1a40ebf40c568b07a2950017ce83daf9 *man/reset_path.Rd
 b1425ead158c1b943b8083c4ebe8f115 *man/rmd_to_forestharp.Rd
 b30f613c2551dfcf5a9c9875ad82ad1c *man/rmd_to_token_count.Rd
-9c1c258c10785c4fb80472ed96974c81 *man/run_tuner.Rd
+a167194124a6838d7f20a2fd26b2eeaa *man/run_tuner.Rd
 169a5776faa436ce84c056c2ef9c8c50 *man/subtree_at.Rd
 9ae7d296e14f2af16dc790d4c1a7f86e *man/to_BFS.Rd
 ad5592d0818433862c12ac0e03b3dc42 *man/tree_sim.Rd

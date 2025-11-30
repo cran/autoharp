@@ -13,7 +13,7 @@ env_size(env)
 The size in bytes, as a numeric value (scalar).
 }
 \description{
-This function uses object_size from the pryr package to compute the total
+This function uses the utils package to compute the total
 amount of memory used by objects in an environment.
 }
 \details{
@@ -27,7 +27,4 @@ e1 <- new.env()
 env_size(e1)
 evalq(x <- 1:10000L, e1)
 env_size(e1)
-}
-\seealso{
-\code{\link[pryr]{object_size}}
 }

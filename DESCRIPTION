@@ -1,8 +1,9 @@
 Package: autoharp
 Title: Semi-Automatic Grading of R and Rmd Scripts
-Version: 0.0.12
+Version: 0.0.13
 Authors@R: c(
-    person("Vik", "Gopal", email="vik.gopal@nus.edu.sg", role=c("aut", "cre")),
+    person("Vik", "Gopal", email="vik.gopal@nus.edu.sg", role="aut"),
+    person("Agrawal", "Naman", email="naman.a@nus.edu.sg", role=c("aut", "cre")),
     person("Samuel", "Seah", email="samuelseah@u.nus.edu", role="aut"),
     person("Viknesh", "Jeya Kumar", email="viknesh@u.nus.edu", role="aut"),
     person("Gabriel", "Ang", email="gabrielang@u.nus.edu", role="aut"),
@@ -15,9 +16,9 @@ Description: A customisable set of tools for assessing and grading
     structure.
 License: MIT + file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Imports: magrittr, dplyr, stringr, rlang, tibble, knitr, rmarkdown,
-        pryr, shiny, lintr, methods, igraph
+        shiny, lintr, methods, igraph
 Collate: 'treeharp.R' 'th_getter-length.R' 'as.matrix.R' 'autoharp.R'
         'check_correctness.R' 'check_rmd.R' 'check_runtime.R'
         'count_lints.R' 'env_size.R' 'extracton_section_text.R'
@@ -31,13 +32,14 @@ Suggests: testthat
 SystemRequirements: pandoc (>= 1.14) - http://pandoc.org
 URL: https://singator.github.io/autoharp-docs/
 NeedsCompilation: no
-Packaged: 2025-04-02 07:37:05 UTC; viknesh
-Author: Vik Gopal [aut, cre],
+Packaged: 2025-11-29 12:31:40 UTC; namanagrawal
+Author: Vik Gopal [aut],
+  Agrawal Naman [aut, cre],
   Samuel Seah [aut],
   Viknesh Jeya Kumar [aut],
   Gabriel Ang [aut],
   Ruofan Liu [ctb],
   National University of Singapore [cph]
-Maintainer: Vik Gopal <vik.gopal@nus.edu.sg>
+Maintainer: Agrawal Naman <naman.a@nus.edu.sg>
 Repository: CRAN
-Date/Publication: 2025-04-02 08:10:05 UTC
+Date/Publication: 2025-11-30 22:30:43 UTC

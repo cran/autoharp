@@ -29,10 +29,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Vik Gopal \email{vik.gopal@nus.edu.sg}
+\strong{Maintainer}: Agrawal Naman \email{naman.a@nus.edu.sg}
 
 Authors:
 \itemize{
+  \item Vik Gopal \email{vik.gopal@nus.edu.sg}
   \item Samuel Seah \email{samuelseah@u.nus.edu}
   \item Viknesh Jeya Kumar \email{viknesh@u.nus.edu}
   \item Gabriel Ang \email{gabrielang@u.nus.edu}

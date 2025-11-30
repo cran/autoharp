@@ -1,3 +1,7 @@
+v0.0.13:
+- removed dependency on pryr
+- updated to work with new version of lintr
+
 v0.0.12:
 - fixed missing link
 - replaced class(x) == "string" with use of is( ) function.
