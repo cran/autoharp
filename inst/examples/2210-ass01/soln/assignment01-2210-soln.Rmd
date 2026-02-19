@@ -1,0 +1,57 @@
+---
+title: "Assignment 01"
+author: "DSA2101 AY 22/23 Sem I"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r echo=FALSE}
+akima_data <- readRDS("../data/assignment01.rds")
+compute_slopes <- function(x, y){
+  m <- (y[-1]-y[-5])/(x[-1]-x[-5])
+  r_diff <- abs(m[4]-m[3])
+  l_diff <- abs(m[2]-m[1])
+  
+  #if(m[1] == m[2] && m[4] == m[3]){
+  if(m[1] != m[2] || m[4] != m[3]){
+    mid_slope <- (r_diff*m[2] + l_diff*m[3])/(l_diff + r_diff)
+  } else {
+    mid_slope <- (1/2)*(m[2] + m[3])
+  }
+  mid_slope
+}
+
+est_poly <- function(x, y, slopes, n=50) {
+  x_vals <- seq(x[1], x[2], length.out=n)
+  p <- c(y[1], slopes[1], 
+         (3*(y[2]-y[1])/(x[2]-x[1]) - 2*slopes[1] - slopes[2])/(x[2]-x[1]),
+         (slopes[1] + slopes[2] -2*(y[2]-y[1])/(x[2]-x[1]))/(x[2]-x[1])^2)
+  cbind(x_vals, p[1] + p[2]*(x_vals-x[1]) + p[3]*(x_vals-x[1])^2 + p[4]*(x_vals-x[1])^3)
+}
+
+```
+
+
+```{r}
+nrow_akima <- NROW(akima_data)
+missing_id <- which(is.na(akima_data[,1]))
+akima_data[missing_id, 1] <- mean(akima_data[(missing_id-1):(missing_id+1),1], 
+                                  na.rm=TRUE)
+all_slopes <- sapply(3:(nrow_akima-2), 
+                     function(w) compute_slopes(akima_data[(w-2):(w+2), 1], 
+                                                akima_data[(w-2):(w+2), 2]))
+
+
+plot(akima_data, ylim=c(0,1), pch=20, cex=1.8, col="orangered3",
+     main="Interpolated data", xlab="x", ylab="y")
+
+plot_out <- sapply(3:(nrow_akima-2), 
+                   function(w) {
+                     lines(est_poly(akima_data[w:(w+1),1], 
+                                    akima_data[w:(w+1), 2], 
+                                    slopes=all_slopes[(w-2):(w-1)],
+                                    n=10), 
+                           col="red")
+                   })
+```

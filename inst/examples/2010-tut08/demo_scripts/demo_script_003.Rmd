@@ -1,0 +1,53 @@
+---
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(tidyverse)
+
+raw_tracking_data <- read_excel('../data/player_tracking_fifa2018.xlsx')
+raw_match_data <- read_excel('../data/match_schedule.xlsx')
+raw_playerinfo_data <- read_excel('../data/player_info_fifa2018.xlsx')
+```
+
+
+```{r}
+altered_tracking <- mutate(group_by(raw_tracking_data, player_name, match_id), total_time = str_split(time_played, '[:punct:]'))
+altered_tracking <- mutate(altered_tracking, total_time = (as.numeric(total_time[[1]][1])*60 + 
+                       as.numeric(total_time[[1]][2]))/60)
+
+joined_data <- left_join(altered_tracking, raw_playerinfo_data, by = c('team' = 'Country', 'jersey' = 'Jersey'))
+
+#Q1
+outfielders <- filter(joined_data, Pos != 'GK', total_time >= 30)
+outfielders2 <- summarise(group_by(outfielders, team, Pos), median_top_speed = median(top_speed), .groups = 'drop')
+d1 <- spread(outfielders2, key = Pos, value = median_top_speed)
+d1 <- mutate(group_by(d1, team), index = if_else(MF > FW, 1, 0))
+
+d2 <- select(ungroup(filter(d1, index == 1)), -index)
+mf_faster <- gather(d2, DF:MF, key = 'Pos', value = 'median_top_speed')
+mf_faster <- arrange(mf_faster, team)
+
+d3 <- select(ungroup(filter(d1, index == 0)), -index)
+fw_faster <- gather(d3, DF:MF, key = 'Pos', value = 'median_top_speed')
+fw_faster <- arrange(fw_faster, team)
+
+
+fw_data <- mutate(fw_faster, Pos = factor(Pos, c('DF', 'MF', 'FW')))
+mf_data <- mutate(mf_faster, Pos = factor(Pos, c('DF', 'MF', 'FW')))
+forward_pos <- filter(mf_data, Pos == 'FW')
+```
+
+
+```{r}
+ggplot() + 
+  geom_line(fw_data, mapping = aes(x = Pos, y = median_top_speed, group = team), colour = 'salmon2') + 
+  geom_line(mf_data, mapping = aes(x = Pos, y = median_top_speed, group = team), colour = 'turquoise3') + 
+  geom_text(data = forward_pos, mapping = aes(x = Pos, y = median_top_speed, label = team), 
+            hjust = 'right', nudge_x = 0.15, size = 3) + 
+  scale_x_discrete('Position', labels = c('Defender', 'Midfielder',  'Forward')) + 
+  scale_y_continuous('km/h') + 
+  labs(title = 'Median Top Speed by Position', 
+       subtitle = "Most teams' forwards sprint faster than their midfielders, but not all..")
+```

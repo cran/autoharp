@@ -1,0 +1,135 @@
+---
+title: "Tutorial 09 Worksheet AY 19/20 Sem I"
+subtitle: DSA2101
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(tidyverse)
+library(stringr)
+library(gridExtra)
+```
+
+# Boston Housing Data
+
+The dataset `bostonc2.txt` contains information on housing prices in different
+census tracts in Boston, USA in the 1970s. There are 506 rows and 21 columns in
+the dataset. 
+
+> The dataset was collected to study the impact of pollution on housing prices.
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+boston <- read.delim("../data/bostonc2.txt", header=TRUE,
+  stringsAsFactors=FALSE) %>% as_tibble()
+```
+
+Here is a description of the columns in the dataset:
+
+## Question 1
+
+Your first task is to recreate this plot.
+
+```{r out.width="100%", fig.align='center', echo=TRUE}
+d <- ggplot(boston, aes(x=LON, y=LAT, z=NOX))
+d2 <- ggplot(boston, aes(x=LON, y=LAT, z=MEDV))
+d2 + stat_summary_hex() + 
+  coord_fixed() +  
+  scale_fill_continuous(low="white", high="red", name="Price") + 
+  labs(x="", y="", subtitle="Housing Prices Lowest in City Centre") +
+  theme(axis.text = element_text(size=6), 
+        legend.title=element_text(size=7),
+        legend.text=element_text(size=6)) -> p2
+d + stat_summary_hex() +
+  coord_fixed() + 
+  scale_fill_continuous(low="white", high="red", name=expression(NO[x])) + 
+  labs(x="", y="", subtitle="Pollutant Highest in City Centre") +
+  theme(axis.text = element_text(size=6),
+        legend.title=element_text(size=7),
+        legend.text=element_text(size=6)) -> p1
+grid.arrange(p1, p2, ncol=2)
+```
+
+Take note of the following layers in the ggplot calls:
+
+1. The use of `stat_summary_hex`.
+2. How the x- and y- labels were set to nothing.
+3. How the sizes of ticks and legend labels were modified within the `theme()` 
+   layer.
+4. How `grid.arrange` was used.
+5. How the sub-script notation in $NO_x$ was created.
+
+## Question 2
+
+For this question, create a scatterplot that shows the relationship between DIS
+and MEDV. Include the `geom_smooth` in your diagram. What do you observe about 
+the relationship. What hyoptheses can you generate from this plot?
+
+```{r out.width="70%", fig.align='center', message=FALSE}
+ggplot(boston) + 
+  geom_smooth(aes(x=DIS, y=MEDV)) + 
+  geom_jitter(aes(x=DIS, y=MEDV))
+```
+
+There appears to be a linear relationship for towns with small DIS values. Even 
+at this range of values, though, there are a few towns that do not follow the 
+relationship. They have extremely high prices compared to other towns with small 
+DIS values.
+
+Beyond this range of DIS values, there appears to be no relationship between 
+DIS and MEDV. The loess smooth flattens out, and the variability around this line 
+becomes much higher.
+
+## Question 3
+
+For this question, follow up the plot in question 2 with another one 
+that addresses the hypotheses that you generated in question 2. Here are some 
+possible ideas:
+
+* Are there different relationships (between DIS and MEDV) for different DIS
+values?
+* Where DIS does not appear to be associated with MEDV, is there another 
+variable that has a stronger relationship with MEDV?
+* Which points are outliers in the diagram in question 2? Is there anything 
+common to those points?
+
+Suppose we first divide up the points on the previous scatterplot into three 
+regions, and plot their lat-long to see where they lie.
+
+```{r out.width="50%", fig.align='center'}
+mutate(boston, sections = 
+         case_when(
+           DIS < 2.5 & MEDV < 25 ~ "sec_01",
+           DIS < 2.5 & MEDV >=25 ~ "sec_02",
+           TRUE ~ "sec_03"
+         )) ->  b2
+ggplot(b2) + 
+  geom_smooth(aes(x=DIS, y=MEDV)) + 
+  geom_jitter(aes(x=DIS, y=MEDV, col=as.factor(sections)), alpha=0.6)
+```
+
+When we plot their lat-long, we find that most of the towns with small DIS are 
+very close to each other, in the city centre. The outliers are also located here.
+Perhaps they are some sort of premium housing within the city centre. Now our 
+goal is to figure out what is driving the prices in the suburbs.
+
+```{r out.width='70%', fig.align='center'}
+ggplot(b2) + 
+  geom_point(aes(x=LON, y=LAT, col=as.factor(sections)), alpha=0.6)
+```
+
+After some exploration, I found that one of the drivers is the number of rooms 
+per house. There is a strong linear association for that group of towns (in 
+blue). 
+
+```{r}
+ggplot(b2, aes(x=RM, y=MEDV, col=as.factor(sections))) + 
+  geom_point(alpha=0.5) + 
+  geom_smooth(method="lm") + 
+  facet_wrap( ~ sections, nrow=3) + theme(legend.position = "none")
+```
+
+# Requirements
+
+Your code should generate three different plots. One of them should be the plot 
+above in Figure 1.

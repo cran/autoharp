@@ -1,0 +1,59 @@
+---
+output: html_document
+---
+
+## Question 1
+
+```{r kjv_tokens}
+library(stringr)
+data <- readRDS("../data/kjv_ind_tokens.rds")
+token_god <- which(data == "God")
+token_joseph <- which(data == "Joseph")
+token_cain <- which(data == "Cain")
+combined2 <- list("Cain" = token_cain, "Joseph" = token_joseph, "God" = token_god)
+stripchart(combined2, xlab = "Token Position", col = c("Red", "Red", "Red"), main = "When Characters Are Mentioned in KJV", pch = "|", las = 1, ylim = c(0, 4))
+```
+
+## Question 2
+
+```{r Data Cleaning}
+data1 <- readLines("../data/wine.txt")
+first_half <- list(str_remove_all(data1, pattern = "[\\)\\(\\*]"))
+first_final <- list(Filter(function(x) {x != "" || x != "</ul>"}, x = first_half))
+sec_half <- list(str_count(data1, pattern = "\\*"))
+final_cleaned_data <- list(Review = unlist(first_final), Ratings = unlist(sec_half))
+```
+
+### 2)
+
+``` {r Process}
+data1 <- str_replace_all(data1, pattern = "[:punct:]", replacement = "")
+data1 <- str_to_lower(data1)
+data1 <- str_split(data1, pattern = "[:blank:]")
+wine_review_list <- sapply(data1,
+                           function(y) {Filter(function(x) {str_count(x, "[:alpha:]") > 3}, y)})
+```
+
+
+### 3)
+
+```{r Jaccard Index}
+jacc_ind <- function(x, y) {
+  ind_char_x <- unique(x)
+  ind_char_y <- unique(y)
+  intersect_length <- length(intersect(ind_char_x, ind_char_y))
+  union_length <- length(union(ind_char_x, ind_char_y))
+  return(intersect_length / union_length)
+}
+```
+
+
+### 4)
+
+```{r Application of Function}
+iterate_over <- combn(wine_review_list, 2)
+final_indices <- apply(iterate_over, 2, function(x) {
+  jacc_ind(unlist(x[1]), unlist(x[2]))
+})
+all_identical_combos <- iterate_over[, which(final_indices == 1)]
+```

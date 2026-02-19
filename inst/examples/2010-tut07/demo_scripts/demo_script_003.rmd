@@ -1,0 +1,66 @@
+---
+title: "Tutorial 7"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(readxl)
+```
+
+```{r Qn0}
+raw_tracking <- read_excel("../data/player_tracking_fifa2018.xlsx")
+raw_player_info <- read_excel("../data/player_info_fifa2018.xlsx")
+raw_pass_comp <- read_excel("../data/pass_completion_fifa2018.xlsx")
+raw_pass_mat <- read_excel("../data/pass_matrix_fifa2018.xlsx")
+```
+
+
+```{r Qn1}
+tracking <- raw_tracking %>%
+  extract(time_played, into = c("time_mins", "time_sec"),
+          regex = "(\\d+)'(\\d+)",
+          convert = TRUE,
+          remove = FALSE) %>%
+  mutate(time_played_mins = time_mins + time_sec/60, time_mins = NULL, time_sec = NULL)
+
+sprint_average <- left_join(raw_player_info, tracking, by = c("Jersey" = "jersey", "Country" = "team")) %>%
+  filter(Pos != "GX", time_played_mins >= 30) %>%
+  mutate(across(c(sprints), function(j) {if_else(is.na(j), 0, j)})) %>%
+  mutate(time_btw_sprints = time_played_mins / sprints) %>%
+  select(Jersey, Country, time_played_mins, sprints, time_btw_sprints)
+
+average_btw_sprints <- sprint_average %>% mutate(avg = sum(time_played_mins)/ sum(sprints))
+```
+
+```{r Qn2}
+pass_tidy <- raw_pass_comp %>%
+  pivot_longer(lpass_comp:tpass_att, names_to = c("pass_type", "status"), names_sep = "_", values_to = "count")
+pass_tidy <- pass_tidy %>% mutate(pass_type = recode(pass_type, lpass= "long", spass= "short", tpass = "total", mpass = "medium"))
+```
+
+```{r Qn3}
+pass_tidy <- pass_tidy %>%
+  filter(status == "att", pass_type != "total") %>%
+  group_by(country, pass_type) %>%
+  summarise(count = sum(count), .group = "drop_last") %>%
+  mutate(prop = count / sum(count))
+
+pass_ent <- pass_tidy %>%
+  summarize(entropy = -sum(prop*log(prop))) %>%
+  arrange(desc(entropy))
+```
+
+```{r Qn4}
+player_info_def <- filter(raw_player_info, Pos == "DF")
+mean_time_def_oh <- tracking %>%
+  left_join(player_info_def, by = c("jersey" = "Jersey", "team" = "Country")) %>%
+  mutate(time_oh_perc = time_oh %>% str_extract("\\d+") %>% as.numeric()) %>%
+  mutate(time_oh_perc = if_else(is.na(time_oh_perc), 0, time_oh_perc)) %>%
+  mutate(time_oh_mins = time_oh_perc/100* time_played_mins) %>%
+  select(team, Name, jersey, time_oh_mins) %>%
+  group_by(team, jersey) %>%
+  summarize(mean_time_oh = mean(time_oh_mins)) %>%
+  summarize(mean_time_oh = mean(mean_time_oh), .groups = "drop") %>%
+  arrange(desc(mean_time_oh))
+```

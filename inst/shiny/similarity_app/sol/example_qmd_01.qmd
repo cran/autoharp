@@ -1,0 +1,36 @@
+---
+title: "Example QMD 01 - Correct"
+format: html
+---
+
+This is a simple example that should match the solution template.
+
+```{r}
+# Numeric vectors
+x <- 1:10
+y <- 20:11  # Different order but same set
+z <- c(2.5, 5.0, 7.5, 10.0)
+
+# Character vector
+names_vec <- c("Alice", "Bob", "Charlie")
+
+# Data frame
+students_df <- data.frame(
+  name = c("Alice", "Bob", "Charlie", "Diana"),
+  age = c(22, 23, 21, 24),
+  score = c(85, 92, 78, 95)
+)
+
+# Matrix
+m <- matrix(1:12, nrow = 3, ncol = 4)
+
+# List
+my_list <- list(
+  numbers = 1:5,
+  letters = c("a", "b", "c"),
+  flag = TRUE
+)
+
+# Factor
+grades <- factor(c("A", "B", "A", "C", "B"), levels = c("A", "B", "C"))
+```

@@ -1,0 +1,66 @@
+---
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(readxl)
+library(tidyr)
+library(tidyverse)
+```
+
+```{r data}
+track <- read_excel("../data/player_tracking_fifa2018.xlsx") 
+player <- read_excel("../data/player_info_fifa2018.xlsx") 
+match <- read_excel("../data/match_schedule.xlsx")
+```
+
+```{r qn2}
+track_newer <- track %>%
+  left_join(player, by = c("jersey" = "Jersey", "team" = "Country")) %>%
+  mutate(time_min = as.numeric(str_extract(time_played, "[[:digit:]]*(?=')")),
+         time_s = as.numeric(str_extract(time_played, '[[:digit:]]*(?=")')),
+         time_tot_min = time_min + (time_s / 60)) %>%
+  filter(Pos == "DF", time_tot_min >= 30) %>%
+  mutate(time_oh = as.numeric(str_extract(time_oh, '[[:digit:]]*')) * time_tot_min / 100) %>%
+  mutate(match_id = as.character(match_id)) %>%
+  left_join(match, by = "match_id")
+
+group <- track_newer %>%
+  filter(str_detect(match_info, "Group")) %>%
+  group_by(Name) %>%
+  mutate(ave_time = mean(time_oh), n_group = sum(time_oh) / ave_time, status = 'group') %>%
+  distinct(Name, .keep_all = TRUE) %>%
+  select(Name, ave_time, n_group, status)
+
+knockout <- track_newer %>%
+  filter(!str_detect(match_info, "Group")) %>%
+  group_by(Name) %>%
+  mutate(ave_time = mean(time_oh), n_knockout = sum(time_oh) / ave_time, status = 'knockout') %>%
+  distinct(Name, .keep_all = TRUE) %>%
+  select(Name, ave_time, n_knockout, status)
+
+newer_data <- group %>%
+  right_join(knockout, by = "Name") %>%
+  filter(n_group >= 2, n_knockout >= 2) %>%
+  gather(c(status.x, status.y), key = "heading", value = "xvals") %>%
+  mutate(yvals = ifelse(xvals == 'group', ave_time.x, ave_time.y)) %>%
+  select(Name, xvals, yvals)
+
+ggplot(newer_data) +
+  geom_line(mapping = aes(x = xvals,
+                          y = yvals,
+                          group = Name,
+                          color = Name)) +
+geom_text(newer_data,
+          mapping = aes(x = xvals,
+                        y = yvals,
+                        label = Name),
+          check_overlap = TRUE,
+          hjust = "outward",
+          size = 2) +
+  labs(title = "Time spent in opposition half by match stage",
+       subtitle = "Most DF players spend more time in the opposition half in group games, but not all..",
+       x = "Match Stage",
+       y = "min") +
+  theme(legend.position = "none")
+```

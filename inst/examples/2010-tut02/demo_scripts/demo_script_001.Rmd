@@ -1,0 +1,57 @@
+---
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(stringr)
+#Question 1
+ind_tokens <- readRDS("../data/kjv_ind_tokens.rds")
+library(stringr)
+sorted <- as.numeric(case_when(
+  ind_tokens == "God" ~ '3',
+  ind_tokens == "Joseph" ~ '2',
+  ind_tokens == "Cain" ~ '1',
+  !ind_tokens %in% c("God", "Joseph", "Cain") ~ "",
+  TRUE ~ ind_tokens))
+
+plot(sorted,
+     pch = "|",
+     col = "red",
+     xlab = "Token position",
+     main = "When Characters Are Mentioned in KJV",
+     ylab = NA,
+     ylim = c(0, 4),
+     las = 1,
+     yaxt = "n")
+axis(side = 2,
+     at = c(3, 2, 1),
+     labels = c("God", "Joseph", "Cain"),
+     las = 1)
+
+```
+
+```{r}
+#Question 2
+wine <- readLines("../data/wine.txt")
+wine <- wine[wine != ""]
+wine <- wine[-1230]
+wine <- str_replace_all(wine, "[:punct:]", "")
+wine <- str_split(str_to_lower(wine), "\\s") #\\s check for tab etc
+wine_review_list <- lapply(wine, function(x) x[str_length(x) > 3])
+
+jacc_ind <- function(v1, v2) {
+  a_u <- unique(v1)
+  b_u <- unique(v2)
+  intersection <- length(intersect(a_u, b_u))
+  union <- length(union(a_u, b_u))
+  j <- intersection / union
+  return(j)
+}
+
+id <- combn(length(wine_review_list), 2)
+index <- mapply(function(x, y) jacc_ind(wine_review_list[[x]], wine_review_list[[y]]),
+                x = id[1, ], y = id[2, ])
+identical_pairs <- id[, which(index == 1)]
+identical_reviews <- unique(wine_review_list[as.vector(identical_pairs)])
+```

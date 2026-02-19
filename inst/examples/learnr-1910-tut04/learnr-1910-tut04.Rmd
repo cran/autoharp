@@ -1,0 +1,107 @@
+---
+title: "Tutorial 4, 1910"
+output: learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(sp)
+library(stringr)
+source('utils.R')
+knitr::opts_chunk$set(echo = FALSE)
+den_clusters <- readRDS("www/dengue_cluster_2014-09-09.rds")
+```
+
+## Dengue Clusters and Cases
+
+### Exercise 1
+
+The rds file `denguecase_central_area_2014-09-09.rds` contains information on
+dengue clusters in the central region of Singapore on 2014-09-09. A dengue
+cluster is a group of cases that have occurred in close space-time proximity. In
+the object, each cluster is a polygon, defined via a sequence of coordinates (in
+SVY21) projection system. 
+
+It has been read into R as `den_clusters`, and it has been declared to be of S3 
+class `clusters`. The libraries `sp` and `stringr` have been loaded for you.
+
+Write a class-specific method for this new S3 class that will convert the **raw** 
+dengue clusters object into a dataframe.
+
+You may need the following function, that will return the area of a polygon, 
+specified in terms of its coordinates.
+
+```{r echo=TRUE, message=FALSE}
+poly_area <- function(xy_mat) {
+  tmp_p <- Polygons(list(Polygon(xy_mat)), "id")
+  tmp_p@area
+}
+
+# Example: a square of length 2:
+coords1 <- matrix(c(0,2,2,0,0, 0,0, 2,2,0), ncol=2)
+# Once you get the coordinates from each cluster, you only have to 
+# supply them to poly_area()
+poly_area(coords1)
+```
+
+Here is an example of the output that your function should provide:
+
+```
+> as.data.frame(den_clusters)[8:10, ]
+                         descr num_cases       area
+8                Verde Ave, Pl         2 0.13361385
+9           Lor 30, 32 Geylang         2 0.11567496
+10 Nth Bridge Rd (Blk 10, 468)         2 0.06113253
+```
+
+Enter your function here:
+
+```{r add-function, exercise=TRUE, exercise.lines = 5}
+as.data.frame.clusters <- function(x) {
+  
+}
+```
+
+### Download your solution
+
+Remember to run all your code before you download your script, and do check the
+script to ensure that all your code is present before you submit.
+
+```{r context='render', echo=FALSE, eval=TRUE}
+downloadLink("download", "Download my solution script")
+```
+
+```{r context='server', echo=FALSE, eval=TRUE}
+all_labels <- c("add-function")
+# 1 - chunk
+# 2 - text
+ex_text <- c(1)
+
+output$download <- downloadHandler(
+    filename = "my_soln.Rmd",
+    content = function(file) { 
+      init_rmd(file, "My solution")
+      
+      # libraries read in
+      add_libraries(file, c("sp", "stringr"))
+      
+      # data read in:
+      data_chunk <- 'den_clusters <- readRDS("www/dengue_cluster_2014-09-09.rds")'
+      add_chunk_rmd(file, "read_data", data_chunk)
+      
+      for(ii in seq_along(all_labels)){
+        if(ex_text[ii] == 1){ # chunk
+          tut_state <- get_tutorial_state(all_labels[ii])
+          add_chunk_rmd(file, all_labels[ii], tut_state$answer, 
+                        add_tryCatch = TRUE)
+        } else {
+          add_text_rmd(file, all_labels[ii], input[[all_labels[ii]]])
+        }
+        
+      }
+    }
+)
+
+```
+

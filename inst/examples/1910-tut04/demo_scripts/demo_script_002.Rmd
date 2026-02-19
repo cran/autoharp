@@ -1,0 +1,148 @@
+---
+title: "Tutorial4"
+output: html_document
+---
+
+## Dengue Clusters
+
+```{r}
+poly_area <- function(xy_mat) {
+  require(sp)
+  tmp_p <- Polygons(list(Polygon(xy_mat)), "id")
+  tmp_p@area
+}
+
+den_clusters <- readRDS("../data/dengue_cluster_2014-09-09.rds")
+
+cluster <- list(den_clusters)
+class(cluster) <- "clusters"
+
+as.data.frame.clusters <- function(x) {
+  numbering <- c(1:50)
+  descr1 <- vector()
+  
+  for (i in 2:51) {
+    descr1 <- c(descr1, x[[1]]$SrchResults[[i]]$DESCRIPTION)
+  }
+  num_cases1 <- vector()
+  
+  for (i in 2:51) {
+    num_cases1 <- c(num_cases1, x[[1]]$SrchResults[[i]]$`Number of cases`)
+  }
+  
+  area1 <- vector()
+  
+  for (i in 2:51) {
+    areastring <- x[[1]]$SrchResults[[i]]$XY
+    areastring <- c(strsplit(areastring,split = "|", fixed = TRUE)[[1]])
+    areavector <- vector()
+    
+    for (j in 1:length(areastring)) {
+      areavector <- c(areavector, c(strsplit(areastring[j], split = ","))[[1]])
+    }
+    options(digits = 20)
+    areadouble <- vector()
+    for (k in 1:length(areavector)) {
+      areadouble <- c(areadouble, as.double(areavector[k]))
+    }
+    area1 = c(area1,poly_area(matrix(areadouble, ncol = 2)/1000000))
+  }
+  
+  x <- data.frame(numbering, descr1, num_cases1, area1)
+  x <- x[order(x$num_cases1),]
+  
+  new <- x$numbering
+  descr <- vector()
+  num_cases <- vector()
+  area <- vector()
+  
+  for (i in new) {
+    descr <- c(descr, descr1[i])
+    num_cases <- c(num_cases, num_cases1[i])
+    area <- c(area, area1[i])
+  }
+  
+  x <- data.frame(descr, num_cases, area)
+  
+  return(x)
+}
+```
+******
+
+2. summary function
+```{r}
+
+summary.clusters <- function(x) {
+  num_cases <- vector()
+  
+  for (i in 2:51) {
+    num_cases<- c(num_cases, x[[1]]$SrchResults[[i]]$`Number of cases`)
+  }
+  num_cases1 <- vector()
+
+  for (i in 1:length(num_cases)) {
+    num_cases1 <- c(num_cases1, as.numeric(num_cases[i]))
+  } 
+  area1 <- vector()
+  
+  for (i in 2:51) {
+    areastring <- x[[1]]$SrchResults[[i]]$XY
+    areastring <- c(strsplit(areastring,split = "|", fixed = TRUE)[[1]])
+    areavector <- vector()
+    
+    for (j in 1:length(areastring)) {
+      areavector <- c(areavector, c(strsplit(areastring[j], split = ","))[[1]])
+    }
+    options(digits = 20)
+    areadouble <- vector()
+    for (k in 1:length(areavector)) {
+      areadouble <- c(areadouble, as.double(areavector[k]))
+    }
+    area1 = c(area1,poly_area(matrix(areadouble, ncol = 2)/1000000))
+  }
+  totalcases <- sum(num_cases1)
+  totalarea <- sum(area1)
+  options(digits = 3)
+  totalarea1 <- round(totalarea*100000, digits = 2)
+  
+  cat("Cluster Summary", "\n",
+      "---------------", "\n", 
+      "No. of clusters: " ,toString(50) , "\n",
+        "No. of cases: " , toString(totalcases) , "\n", 
+        "Total area: " , toString(totalarea1), "km2")
+  
+}
+
+```
+
+## R-bloggers
+
+```{r}
+front_page <- read_html("https://www.r-bloggers.com/2017/05/")
+
+pages_node <-  html_text( html_element(front_page, ".pagination .last") )
+pages_node <- as.numeric(pages_node)
+
+titles <- NULL
+dates <- NULL
+
+#for(ii in 1:pages_node) {
+for(ii in 1:10) {
+  page_url <- paste0("https://www.r-bloggers.com/2017/05/page/", ii, "/")
+  read_page <- tryCatch(read_html(page_url),
+                        error = function(e) return(NULL))
+  if(is.null(read_page)) {
+    cat(paste0("Page ", ii, " failed. Skipping it.\n"))
+    next
+  }
+  title_nodes <- html_elements(read_page, ".loop-title a")
+  titles <- c(titles, html_text(title_nodes))
+  
+  date_nodes <- html_elements(read_page, ".meta")
+  dates <- c(dates, str_trim(str_split_i(html_text(date_nodes), "\\|", 1)))
+  cat("Done with page ", ii, "..\n")
+}
+
+titles_df <- data.frame(titles= titles, dates= dates, stringsAsFactors = FALSE)
+```
+

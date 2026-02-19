@@ -9,7 +9,8 @@ populate_soln_env(
   pattern,
   knit_root_dir,
   render_only = FALSE,
-  output = NULL
+  output = NULL,
+  dummy = FALSE
 )
 }
 \arguments{
@@ -32,6 +33,12 @@ deleted immediately, but sometimes we may want to keep it. This
 argument is passed on to \code{\link[knitr]{knit}}, so please refer to 
 that page for the warnings about setting this argument when figures are 
 involved.}
+
+\item{dummy}{A logical value. If TRUE, then a dummy solution object is created
+The environment will be empty, and the temporary test script will only have 
+one line in it: `ah_dummy <- TRUE`. This solution object can be used to render 
+a solution file without any correctness checks. Of course, one could just knit 
+it directly, but this is still useful when testing things out.}
 }
 \value{
 If render_only is FALSE, a list containing 2 components: the
@@ -55,7 +62,7 @@ relies on the autoharp.obj and autoharp.scalars knitr hooks being present.
 In addition, if it is required that a solution object is to be tested against
 the analogous object within the student environment, these objects should be 
 listed within the autoharp.objs option of a code chunk. These objects will be 
-copied with the "." preffix.
+copied with the "." prefix.
 
 Here is an overview of how the function works:
 \enumerate{

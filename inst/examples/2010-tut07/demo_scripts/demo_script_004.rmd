@@ -1,0 +1,128 @@
+---
+output: html_document
+---
+
+## Data & Packages
+```{r}
+library(readxl)
+library(stringr)
+library(tidyverse)
+
+player_info <- read_excel("../data/player_info_fifa2018.xlsx")
+player_tracking <- read_excel("../data/player_tracking_fifa2018.xlsx")
+pass_completion <- read_excel("../data/pass_completion_fifa2018.xlsx")
+pass_matrix <- read_excel("../data/pass_matrix_fifa2018.xlsx")
+```
+
+## Q1.
+```{r}
+notGK <- player_info %>%
+  filter(Pos != "GK") %>%
+  select(Jersey, Country)
+
+get_time_min <- function(x) {
+  split <- str_split(x, "\'")[[1]]
+  m <- split[1]
+  s <- split[2]
+  sec <- as.numeric(str_sub(s, 1, nchar(s) - 1))
+  min  <- as.numeric(m)
+  return((min + sec / 60))
+}
+player_tracking2 <- player_tracking %>%
+  rename(Country = team, Jersey = jersey) %>%
+  mutate(time_played = unlist(lapply(time_played, get_time_min)))
+
+semiJoinDf <- semi_join(player_tracking2, notGK, by = c("Country", "Jersey"))
+
+player_tracking3 <- semiJoinDf %>%
+  rowwise() %>%
+  mutate(avg_sprint = time_played / sprints)
+
+avg <- mean(player_tracking3$avg_sprint, na.rm = TRUE)
+```
+
+## Q2.
+```{r}
+type_pass <- function(x) {
+  first <- str_sub(x, 1, 1)
+  if(first == "l") {
+    return("long")
+  } else if(first == "m") {
+    return("medium")
+  } else if(first == "t") {
+    return("total")
+  } else {
+    return("short")
+  }
+}
+
+### Conversion to long format
+pass_tidy <- pass_completion %>%
+  group_by(country, jersey) %>%
+  pivot_longer(1:8, names_to = "pass_type", values_to = "count") %>%
+  rowwise() %>%
+  mutate(status = str_split(pass_type, "_")[[1]][2], pass_type = type_pass(pass_type)) %>%
+  relocate(status, .after = pass_type) %>%
+  ungroup()
+```
+
+## Q3.
+```{r}
+entropy_table <- pass_tidy %>%
+  select(-1) %>%
+  filter(status == "att") %>%
+  group_by(country, pass_type) %>%
+  summarise(proportion = sum(count)) %>%
+  filter(pass_type != "total") %>%
+  mutate(proportion = (proportion / sum(proportion))) %>%
+  mutate(i.entropy = proportion * log(proportion)) %>%
+  summarise(entropy = -sum(i.entropy), .groups = "drop") %>%
+  arrange(desc(entropy))
+```
+
+## Q4.
+```{r}
+DF <- player_info %>%
+  filter(Pos == "DF") %>%
+  select(Jersey, Country)
+
+semiJoinDf2 <- semi_join(player_tracking2, DF, by = c("Country", "Jersey"))
+
+change <- function(x) {
+  if(is.na(x)) {
+    return("0")
+  } else {
+    return(gsub("[^[:digit:]]", "", x))
+  }
+}
+
+time_in_oh <- semiJoinDf2 %>%
+  rowwise() %>%
+  mutate(time_oh = as.numeric(change(time_oh))) %>%
+  rowwise() %>%
+  mutate(time_oh = time_oh / 100 * time_played) %>%
+  group_by(Country) %>%
+  summarise(time_oh = mean(time_oh), .groups = "drop") %>%
+  arrange(desc(time_oh))
+```
+
+```{r}
+notGK2 <- player_info %>%
+  filter(Pos != "GK") %>%
+  select("Jersey", "Pos", "Country")
+
+semiJoinDf3 <- semi_join(player_tracking2, notGK2, by = c("Jersey", "Country"))
+
+avg_spd_distribution <- right_join(semiJoinDf3, notGK2, by = c("Jersey", "Country")) %>%
+  rowwise() %>%
+  mutate_at(c("z1", "z2", "z3", "z4", "z5"), change) %>%
+  mutate_at(c("z1", "z2", "z3", "z4", "z5"), as.numeric) %>%
+  mutate_at(c("z1", "z2", "z3", "z4", "z5"), function(x) x <- x / 100) %>%
+  mutate(z1 = z1 * time_played, z2 = z2 * time_played, z3 = z3 * time_played, z4 = z4 * time_played, z5 = z5 * time_played) %>%
+  group_by(Pos) %>%
+  summarise_at(c("z1", "z2", "z3", "z4", "z5"), mean, na.rm = TRUE, .groups = "drop") %>%
+  rowwise() %>%
+  mutate(total_time = z1 + z2 + z3 + z4 + z5) %>%
+  rename_at(vars(c("z1", "z2", "z3", "z4", "z5")), ~c("0-7", "7-15", "15-20", "20-25", ">25"))
+
+```

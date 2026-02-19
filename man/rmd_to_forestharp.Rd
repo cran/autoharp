@@ -4,36 +4,36 @@
 \alias{rmd_to_forestharp}
 \title{Convert to TreeHarp objects}
 \usage{
-rmd_to_forestharp(fname, line_nums = FALSE)
+rmd_to_forestharp(fname, verbose = FALSE)
 }
 \arguments{
 \item{fname}{The filename that is to be read in.}
 
-\item{line_nums}{A logical value, indicating if the line numbers of
-expressions should be returned along with the expressions. By default, this 
-value is FALSE.}
+\item{verbose}{If TRUE, then messages will be printed to enable debugging.
+dropped.}
 }
 \value{
-A list of TreeHarp objects, or a list with 2 components containing
-the TreeHarp objects and a vector of line numbers.
+There are three possible return outcomes: (1) NA, indicating that 
+\code{\link[knitr]{purl}} was unable to extract the R expressions from the 
+Rmd/qmd file. (2) A list with two components, named \code{forest} and
+\code{line_nums}, each being NA. (3) A list with two components, named as in 
+(2), containing the TreeHarp objects and a vector of line numbers.
+
+If there are syntax errors in the file, the expressions may not be parsed
+correctly. The \code{verbose} option will reflect this.
 }
 \description{
 Reads in an Rmd file or an R script and converts it to a list of TreeHarp
 objects.
 }
 \details{
-The TreeHarp constructor is wrapped in a tryCatch loop, so that it
-does not fail if an expression could not be converted to a TreeHarp object.
+If an Rmd or qmd file is supplied as input, it is first converted
+to an R script before \code{\link[lintr]{get_source_expressions}} is used 
+to try to parse the expressions. These expressions are then matched to the
+original file to retrieve line numbers. Unlike previous versions of this 
+function, line numbers will always be returned.
 
-The object returned is not a specially defined class. It is either a list of 
-length 2, or a list of TreeHarp objects. This output is meant to be used 
-with \code{\link{fapply}}.
-
-If the input file is an Rmd file (checked with \link{extract_chunks}), then the
-chunks are extracted and converted to TreeHarp objects. If the input file is 
-not an Rmd, it is assumed to be an R script. This script is then supplied to 
-\link{parse}. In either case, a parsing error here could cause the function to 
-fail.
+Expressions that could not be parsed will be returned as NA.
 
 Line numbers are extracted using \code{\link[lintr]{get_source_expressions}} from
 the lintr package.

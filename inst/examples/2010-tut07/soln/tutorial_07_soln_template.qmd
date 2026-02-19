@@ -1,0 +1,87 @@
+---
+title: "AY 20/21 Tut 7 Solution Template"
+format: html
+---
+
+```{r testsimple}
+#| autoharp.scalars: ['for_loop', 'lambda_fn', 'apply_count']
+f1 <- rmd_to_forestharp(.myfilename, TRUE)
+if(is(f1, "logical")){
+  for_loop <- lambda_fn <- apply_count <- NA_integer_
+} else {
+  for_loop <- fapply(f1, count_fn_call, pattern = "^for$")
+  lambda_fn <- fapply(f1, count_lam_fn)
+  apply_count <- fapply(f1, count_fn_call, pattern = "apply")
+}
+```
+
+```{r test_dplyr}
+#| autoharp.scalars: ['dplyr_count', 'dplyr_func']
+libs_used <- get_libraries(.myfilename)
+if("tidyverse" %in% libs_used || "dplyr" %in% libs_used) {
+  if(!is(f1, "logical")){
+    dplyr_count <- fapply(f1, count_fn_call, pkg_name = "dplyr", combine = TRUE)
+    
+    dplyr_func <-  fapply(f1, extract_fn_call, pkg_name = "dplyr", 
+                          combine =TRUE, combiner_fn = function(x) 
+                            unlist(x) %>% unique() %>% paste(collapse = ", "))
+  } else {
+  dplyr_count <- NA_integer_
+  dplyr_func <- NA_character_
+  }
+} else {
+  dplyr_count <- 0
+  dplyr_func <- ""
+}
+```
+
+```{r test_selffn}
+#| autoharp.scalars: ['self_def_fns']
+if(!is(f1, "logical")){
+  self_def_fns <- fapply(f1, extract_self_fn, combine=TRUE,  
+                         combiner_fn = function(x) paste0(unlist(x), collapse=","))
+}  else {
+  self_def_fns <- NA_character_
+}
+```
+
+```{r test_nested_for}
+#| autoharp.scalars: ['nested_for_used']
+if(!is(f1, "logical")){
+  nested_for_used <-  fapply(f1, detect_nested_for, combine=TRUE, 
+                             combiner_fn = function(x) any(unlist(x)))
+} else {
+  nested_for_used <- NA
+}
+```
+
+```{r testqn2}
+#| autoharp.scalars: ['nrow_q2', 'ncol_q2']
+
+if(exists("pass_tidy")){
+ nrow_q2 <- NROW(pass_tidy) 
+ ncol_q2 <- NCOL(pass_tidy) 
+} else {
+ nrow_q2 <- ncol_q2 <- NA_integer_ 
+}
+```
+
+```{r testqn5_esp}
+#| autoharp.scalars: ['nrow_q5_esp', 'ncol_q5_esp']
+if(exists("pass_df_esp")){
+ nrow_q5_esp <- NROW(pass_df_esp) 
+ ncol_q5_esp <- NCOL(pass_df_esp)
+} else {
+ nrow_q5_esp <- ncol_q5_esp <- NA_integer_ 
+}
+```
+
+```{r testqn5_por}
+#| autoharp.scalars: ['nrow_q5_por', 'ncol_q5_por']
+if(exists("pass_df_por")){
+ nrow_q5_por <- NROW(pass_df_por) 
+ ncol_q5_por <- NCOL(pass_df_por)
+} else {
+ nrow_q5_por <- ncol_q5_por <- NA_integer_ 
+}
+```

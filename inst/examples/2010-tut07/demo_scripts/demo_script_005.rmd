@@ -1,0 +1,74 @@
+---
+output: html_document
+---
+
+```{r Q1}
+library(readxl)
+library(readr)
+library(stringr)
+library(tidyverse)
+p_info <- read_xlsx("../data/player_info_fifa2018.xlsx")
+pass_c <- read_xlsx("../data/pass_completion_fifa2018.xlsx")
+pass_m <- read_xlsx("../data/pass_matrix_fifa2018.xlsx")
+p_track <- read_xlsx("../data/player_tracking_fifa2018.xlsx")
+Numextract <- function(string) {
+  as.numeric(unlist(regmatches(string, gregexpr("[[:digit:]]+\\.*[[:digit:]]*", string))))
+}
+q1 <- p_track %>%
+  left_join(p_info, by = c("jersey" = "Jersey", "team" = "Country")) %>%
+  filter(Pos != "GK") %>%
+  mutate(time_sec = (Numextract(time_played)[1] * 60 + Numextract(time_played)[2])) %>%
+  mutate(avg_time_btnSp_In_Sec = time_sec / sprints) %>%
+  select(jersey, player_name, avg_time_btnSp_In_Sec)
+q1
+```
+```{r Q2}
+pass_tidy <- pass_c %>%
+  pivot_longer(cols = -c(jersey, country, match_id),
+               names_to = c("pass_type", "status"),
+               names_sep = ("_"),
+               values_to = "count") %>%
+  mutate(pass_type = recode(pass_type, lpass = "long", mpass = "medium", spass = "short"))
+```
+
+```{r Q3}
+pass_tidy %>%
+  filter(status == "att", pass_type != "total") %>%
+  group_by(country, pass_type) %>%
+  summarize(count = sum(count), .groups = "drop_last") %>%
+  mutate(proportion = count / sum(count)) %>%
+  summarise(entropy = -sum(proportion * log(proportion)))
+```
+```{r Q4}
+
+q4 <- p_info %>%
+  left_join(p_track, by = c("Jersey" = "jersey", "Country" = "team")) %>%
+  filter(Pos == "DF") %>%
+  group_by(Country) %>%
+  mutate(time_min = (Numextract(time_played)[1] + Numextract(time_played)[2] / 60)) %>%
+  mutate(time_oh = parse_number(time_oh)) %>%
+  replace_na(list(time_oh = 0, time_min = 0)) %>%
+  summarize(mean_time_oh = mean(time_oh / 100 * time_min),
+            sd_time_oh = sd(time_oh / 100 * time_min), .groups = "drop") %>%
+  arrange(desc(mean_time_oh))
+q4
+```
+```{r Q5}
+pass_df_esp <- pass_m %>%
+  mutate(match_id = parse_number(match_id)) %>%
+  semi_join(filter(p_track, match_id == 300331524,
+                   Numextract(time_played)[1] >= 30, team == "ESP"),
+                   by = c("country" = "team", "from_player" = "jersey", "match_id" = "match_id")) %>%
+  pivot_wider(names_from = to_player, values_from = pass_count) %>%
+  select(-c(country, match_id))
+
+pass_df_por <- pass_m %>%
+  mutate(match_id = parse_number(match_id)) %>%
+  semi_join(filter(p_track, match_id == 300331524,
+                   Numextract(time_played)[1] >= 30, team == "POR"),
+                   by = c("country" = "team", "from_player" = "jersey")) %>%
+  pivot_wider(names_from = to_player, values_from = pass_count) %>%
+  select(-c(country, match_id))
+```
+
+

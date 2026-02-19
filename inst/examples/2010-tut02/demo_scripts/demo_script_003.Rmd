@@ -1,0 +1,58 @@
+---
+output: html_document
+---
+# Question 1
+```{r}
+library(stringr)
+tokens <- readRDS("../data/kjv_ind_tokens.rds")
+index_cain <- which(tokens == "Cain")
+index_joseph <- which(tokens == "Joseph")
+index_god <- which(tokens == "God")
+
+len_cain <- length(index_cain)
+len_joseph <- length(index_joseph)
+len_god <- length(index_god)
+plot(x = c(index_cain, index_joseph, index_god), 
+     y = c(rep(1, len_cain), rep(2, len_joseph), rep(3, len_god)), 
+     xlab = "Token position", ylab = NA, 
+     main = "When Characters Are Mentioned in KJV", 
+     yaxt = "n", pch = "|", col = "red", 
+     plt = c(0, 44507, 0, 4), ylim = c(0, 4))
+axis(side = 2, at = c(1, 2, 3), 
+     labels = c("Cain", "Joseph", "God"), las = 1)
+```
+
+# Question 2
+```{r}
+wine <- readLines("../data/wine.txt")
+wine <- wine[wine != ""]
+wine <- wine[-length(wine)]
+```
+
+```{r}
+wine <- lapply(wine, function(x) str_replace_all(x, pattern = "[:punct:]", " "))
+wine <- lapply(wine, function(x) tolower(x))
+wine <- lapply(wine, function(x) unlist(str_split(x, pattern = "[:blank:]")))
+ind <- lapply(wine, function(x) which(nchar(x) > 3)) # note the good usage of lapply!!
+wine_review_list <- mapply(function(x, y) x[y], wine, ind) # & mapply !!
+```
+
+
+## Part 3
+```{r}
+jacc_ind <- function(char1, char2) {
+  Au <- unique(char1)
+  Bu <- unique(char2)
+  intersection <- NULL
+  for (i in char1) {
+    for (j in char2) {
+      if (j == i) {
+        intersection <- c(intersection, j)
+      }
+    }
+  }
+  intersection <- unique(intersection)
+  union <- unique(c(Au, Bu))
+  return(length(intersection) / length(union))
+}
+```

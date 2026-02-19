@@ -1,0 +1,65 @@
+---
+title: "AY 20/21 Tut 7 Solution Template"
+format: html
+---
+
+```{r testsimple}
+#| autoharp.scalars: ['for_loop', 'lambda_fn', 'apply_count']
+f1 <- rmd_to_forestharp(.myfilename, TRUE)
+if(is(f1, "logical")){
+  for_loop <- lambda_fn <- apply_count <- NA_integer_
+} else {
+  for_loop <- fapply(f1, count_fn_call, pattern = "^for$")
+  lambda_fn <- fapply(f1, count_lam_fn)
+  apply_count <- fapply(f1, count_fn_call, pattern = "apply")
+}
+```
+
+```{r test_dplyr}
+#| autoharp.scalars: ['dplyr_count', 'dplyr_func']
+libs_used <- get_libraries(.myfilename)
+if("tidyverse" %in% libs_used || "dplyr" %in% libs_used) {
+  if(!is(f1, "logical")){
+    dplyr_count <- fapply(f1, count_fn_call, pkg_name = "dplyr", combine = TRUE)
+    
+    dplyr_func <-  fapply(f1, extract_fn_call, pkg_name = "dplyr", 
+                          combine =TRUE, combiner_fn = function(x) 
+                            unlist(x) %>% unique() %>% paste(collapse = ", "))
+  } else {
+  dplyr_count <- NA_integer_
+  dplyr_func <- NA_character_
+  }
+} else {
+  dplyr_count <- 0
+  dplyr_func <- ""
+}
+```
+
+```{r test_selffn}
+#| autoharp.scalars: ['self_def_fns']
+if(!is(f1, "logical")){
+  self_def_fns <- fapply(f1, extract_self_fn, combine=TRUE,  
+                         combiner_fn = function(x) paste0(unlist(x), collapse=","))
+}  else {
+  self_def_fns <- NA_character_
+}
+```
+
+```{r test_nested_for}
+#| autoharp.scalars: ['nested_for_used']
+if(!is(f1, "logical")){
+  nested_for_used <-  fapply(f1, detect_nested_for, combine=TRUE, 
+                             combiner_fn = function(x) any(unlist(x)))
+} else {
+  nested_for_used <- NA
+}
+```
+
+
+```{r test_geoms}
+#| autoharp.scalars: ['geoms_used']
+geoms_used <- 0
+geoms_used <-  fapply(f1, extract_fn_call, pattern="^geom*",
+                        combine =TRUE, combiner_fn = function(x) 
+                          unlist(x) %>% unique() %>% paste(collapse = ", "))
+```

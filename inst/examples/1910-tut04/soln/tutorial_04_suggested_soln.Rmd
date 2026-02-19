@@ -1,0 +1,147 @@
+---
+title: "Tutorial 4 Worksheet AY 19/20 Sem I"
+subtitle: DSA2101
+output:
+  pdf_document:
+    keep_tex: yes
+  html_document: default
+---
+
+# Dengue Clusters and Cases
+
+The rds file `dengue_cluster_2014-09-09.rds` contains information on dengue
+clusters in the central region of Singapore on 2014-09-09. A dengue cluster is a
+group of cases that have occurred in close space-time proximity. In the object,
+each cluster is a polygon, defined via a sequence of coordinates (in SVY21)
+projection system. Read this into R as the object `den_clusters`, and declare
+its  S3 class to be `clusters`.
+
+Write specific methods for this new S3 class that will convert the **raw**
+dengue clusters object into a dataframe, and that will summarise the clusters.
+
+You may need the following function, that will return the area of a polygon, 
+specified in terms of its coordinates.
+
+```{r message=FALSE}
+poly_area <- function(xy_mat) {
+  require(sp)
+  tmp_p <- Polygons(list(Polygon(xy_mat)), "id")
+  tmp_p@area
+}
+
+# Example: a square of length 2:
+coords1 <- matrix(c(0,2,2,0,0, 0,0, 2,2,0), ncol=2)
+poly_area(coords1)
+# Once you get the coordinates from each cluster, you only have to 
+# supply them to poly_area()
+```
+
+
+```{r echo=FALSE}
+den_clusters <- readRDS("../data/dengue_cluster_2014-09-09.rds")
+```
+
+```{r echo=FALSE}
+library(sp)
+library(stringr)
+
+get_coords <- function(x) {
+  # str_extract(tmp$XY, "(.*?)(\\|)")
+  # or str_split on | and take the first component
+  # XY_str <- str_extract(x$XY, "^[^(\\|)]*")
+  XY_str <- str_split(x$XY, "\\|")[[1]]
+  XY_str <- str_split(XY_str, ",")
+  XY_num <- sapply(XY_str, as.numeric)
+  t(XY_num)
+}
+
+as.data.frame.clusters <- function(x) {
+  XY <- lapply(x[[1]][-1], get_coords)
+  areas <- sapply(XY, poly_area)/1e6
+  
+  descr <- sapply(x[[1]][-1], function(z) z$DESCRIPTION)
+  num_cases <- sapply(x[[1]][-1], function(z) as.numeric(z[[2]]))
+  data.frame(descr= descr, num_cases=num_cases, area = areas, 
+             stringsAsFactors = FALSE)
+}
+
+summary.clusters <- function(x, ...) {
+  df <- as.data.frame(x)
+  num_clusters <- nrow(df)
+  total_area <- sum(df$area)
+  total_cases <- sum(df$num_cases)
+  cat('Cluster Summary:\n')
+  cat('----------------\n')
+  cat('No. of clusters:\t', as.character(num_clusters), '\n')
+  cat('No. of cases   :\t', as.character(total_cases), '\n')
+  cat('Total area     :\t', as.character(round(total_area, 2)), 'km2 \n')
+}
+```
+
+Here is the output that your methods should provide:
+
+```{r}
+as.data.frame(den_clusters)[8:10, ]
+```
+
+```{r}
+summary(den_clusters)
+```
+
+# R Bloggers Website
+
+The r-bloggers website is a popular blog for keeping track of new packages and 
+tutorials on R. The url is https://www.r-bloggers.com. Write code that will 
+download all the titles for the month of May 2017 and store them in a data 
+frame. 
+
+Try to write code that is general; imagine that you might want to do this 
+every month. There should not be a need to manually inspect the page every 
+month to configure parameters.
+
+Practice including a try-catch loop, and adding messages to keep track of 
+successful/unsuccessful downloads.
+
+```{r eval=TRUE, echo=FALSE, message=FALSE}
+library(rvest)
+
+front_page <- read_html("https://www.r-bloggers.com/2017/05/")
+
+pages_node <-  html_text( html_node(front_page, ".pagination .last") )
+pages_node <- as.numeric(pages_node)
+
+titles <- NULL
+dates <- NULL
+
+#for(ii in 1:pages_node) {
+for(ii in 1:10) {
+  page_url <- paste0("https://www.r-bloggers.com/2017/05/page/", ii, "/")
+  read_page <- tryCatch(read_html(page_url),
+                        error = function(e) return(NULL))
+  if(is.null(read_page)) {
+    cat(paste0("Page ", ii, " failed. Skipping it.\n"))
+    next
+  }
+  title_nodes <- html_elements(read_page, ".loop-title a")
+  titles <- c(titles, html_text(title_nodes))
+  
+  date_nodes <- html_elements(read_page, ".meta")
+  dates <- c(dates, str_trim(str_split_i(html_text(date_nodes), "\\|", 1)))
+  cat("Done with page ", ii, "..\n")
+}
+
+titles_df <- data.frame(titles= titles, dates= dates, stringsAsFactors = FALSE)
+```
+
+```{r echo=FALSE}
+head(unique(titles_df))
+```
+
+# Requirements
+
+Ensure that your code generates the following objects:
+
+1. Specific functions `as.data.frame` and `summary` for objects of S3 class 
+`clusters`.
+2. A `titles_df` with two columns (both of class character). The first column 
+should be `titles` and the second column should be `dates`. 

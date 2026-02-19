@@ -1,9 +1,3 @@
-test_that("check_rmd", {
-  expect_false(check_rmd("test01.Rmd", FALSE))
-  expect_false(check_rmd("test02.Rmd", FALSE))
-  expect_true(check_rmd("test03.Rmd", TRUE))
-})
-
 test_that("get_libraries", {
   expect_equal(get_libraries("test03.Rmd"), c("dplyr", "knitr"))
 })
@@ -44,7 +38,7 @@ if(rmarkdown::pandoc_available()){
 
     test_that("correctness2", {
       expect_equal(out1[1, "Y1"], "C")
-      expect_equal(out2[1, 1], NA)
+      expect_equal(out2[1, 3], NA)
       expect_true(is.na(out3[1, "Zmean"]))
     })
 }

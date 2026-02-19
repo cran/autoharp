@@ -1,0 +1,51 @@
+---
+output: html_document
+---
+
+## Question 1
+```{r}
+kjv_ind_tokens <- readRDS("../data/kjv_ind_tokens.rds")
+coordx <- unlist(lapply(c("God", "Joseph", "Cain"), function(x) which(x == kjv_ind_tokens)))
+coordy <- kjv_ind_tokens[coordx]
+# plot the graph, x:index position, y:word
+plot(coordx, 
+     factor(coordy, levels = c("Cain", "Joseph", "God")),
+     ylab = "", xlab = "Token position",
+     main = "When Characters Are Mentioned in KJV",
+     ylim = range(0,4), pch = "|", col = "red",
+     yaxt ='n', cex.axis = 0.9)
+axis(side = 2, at = c(1, 2, 3), 
+     labels = c("Cain", "Joseph", "God"),
+     las = 1)
+```
+
+## Question 2
+```{r}
+library(stringr)
+wine_review_list <- readLines("../data/wine.txt")
+# remove last line and empty strings 
+wine_review_list <- wine_review_list[wine_review_list != ""]
+wine_review_list <- wine_review_list[1:length(wine_review_list) - 1]
+```
+remove the empty rows in wine and the last line which is not a review 
+
+## Question 2.2
+```{r}
+wine_review_list <- str_replace_all(wine_review_list, "[:punct:]", "")
+wine_review_list <- tolower(wine_review_list)
+wine_review_list <- str_split(wine_review_list, pattern = "\\s")
+ind <- lapply(wine_review_list, function(x) which(nchar(x) > 3))
+wine_review_list <- mapply(function(x, y) x[y], wine_review_list, ind)
+```
+
+## Question 2.3
+```{r}
+jacc_ind <- function(A, B) {
+        unqA <- unique(A)
+        unqB <- unique(B)
+        numint <- length(intersect(unqA, unqB))
+        numun <- length(unique(c(unqA, unqB)))
+        index <- numint / numun
+        index
+}
+```

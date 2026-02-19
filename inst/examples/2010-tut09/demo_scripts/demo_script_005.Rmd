@@ -1,0 +1,58 @@
+---
+output:
+  html_document:
+    toc: true
+---
+
+```{r import, include=FALSE}
+library(tidyverse)
+library(classInt)
+library(scales)
+```
+
+```{r qn1, echo=FALSE}
+tw <- read.csv("../data/taiwan_dataset.csv") %>% as_tibble
+tw1 <- tw %>% select(house_age, num_stores, price)
+
+breaks_age <- classIntervals(tw1$house_age, n = 5, style = "fixed",
+                             fixedBreaks = c(0, 10, 20, 30, 40, 50))
+labels <- paste("[", breaks_age$brks[-6], ", ",
+                breaks_age$brks[-1], ")", sep = "")
+tw2 <- tw1 %>% mutate(house_age = factor(findCols(breaks_age), labels = labels))
+
+breaks_num <- classIntervals(tw2$num_stores, n = 7, style = "fixed",
+                             fixedBreaks = c(seq(0, 6), 11))
+tw3 <- tw2 %>%
+  mutate(num_stores = factor(findCols(breaks_num),
+                             labels = c(as.character(seq(0, 5)), "6 or more")),
+         num_stores = fct_rev(num_stores))
+
+tw4 <- tw3 %>%
+  group_by(house_age, num_stores) %>%
+  summarise(med = median(price), .groups = "drop")
+
+if_else_vec <- Vectorize(if_else)
+tw5 <- tw4 %>%
+  mutate(white = if_else_vec(med > 32, "T", "F"),
+         med = format(med, nsmall = 2))
+
+# Plot
+ggplot(tw4) +
+  geom_tile(aes(x = house_age, y = num_stores, fill = med),
+            show.legend = FALSE) +
+  scale_fill_gradient(low = "deepskyblue", high = "deepskyblue4") +
+  scale_x_discrete(position = "top") +
+  theme(axis.ticks.x = element_blank(), axis.ticks.y = element_blank(),
+        axis.text.y = element_text(hjust = 0),
+        axis.title.x = element_text(size = 12),
+        panel.background = element_blank(),
+        text = element_text(family = "sans", size = 16)) +
+  coord_fixed(1 / 3, clip = "off") +
+  labs(x = "House age (yrs)\n", y = "") +
+  annotate("text", x = -0.5, y = 8, label = "Num. of nearby stores",
+           family = "sans", size = 4) +
+  geom_text(data = tw5,
+            aes(x = house_age, y = num_stores, label = med, colour = white),
+            show.legend = FALSE, family = "sans") +
+  scale_colour_manual(values = c("black", "white"))
+```

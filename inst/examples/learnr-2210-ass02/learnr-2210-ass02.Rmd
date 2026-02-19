@@ -1,0 +1,78 @@
+---
+title: "Assignment 2, AY22/23 Sem I"
+output: learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+source('utils.R')
+```
+
+## Box-Muller Transformation
+
+The following algorithm (Box-Muller) generates a pair of i.i.d random variables
+from a $N(0,1)$ distribution.
+
+1. Generate $U_1, U_2 \sim Unif(0,1)$.
+2. Define:
+\begin{eqnarray}
+X_1 &=& \sqrt{-2 \log(U_1)} \cos(2\pi U_2) \\
+X_2 &=& \sqrt{-2 \log(U_1)} \sin(2\pi U_2)
+\end{eqnarray}
+3. Take $X_1$ and $X_2$ as i.i.d draws from $N(0,1)$.
+
+### Exercise 1
+
+Fill in the blanks below to complete the function implementation in R.
+
+```{r q1, exercise=TRUE, exercise.blanks="___+"}
+box_muller <- function(n=20) {
+  if(n %% 2 == 1)  {
+    nn <- n + 1
+  } else {
+    nn <- n
+  }
+  U <- matrix(runif(nn), ncol=2)
+  X1 <- ____(-2*log(U[,1]))*cos(2*pi*U[,2])
+  X2 <- ____(-2*log(U[,1]))*sin(2*pi*U[,2])
+  c(X1, X2)[1:n]
+}
+```
+
+### Download your solution
+
+Remember to run all your code before you download your script, and do check the
+script to ensure that all your code is present before you submit.
+
+
+```{r context='render', echo=FALSE, eval=TRUE}
+downloadLink("download", "Download my solution script")
+```
+
+```{r context='server', echo=FALSE, eval=TRUE}
+all_labels <- c("q1") 
+# 1 - chunk
+# 2 - text
+ex_text <- c(1)
+
+output$download <- downloadHandler(
+    filename = "my_soln.Rmd",
+    content = function(file) { 
+      init_rmd(file, "My solution")
+      
+      for(ii in seq_along(all_labels)){
+        if(ex_text[ii] == 1){ # chunk
+          tut_state <- get_tutorial_state(all_labels[ii])
+          add_chunk_rmd(file, all_labels[ii], tut_state$answer, 
+                        add_tryCatch = TRUE)
+        } else {
+          add_text_rmd(file, all_labels[ii], input[[all_labels[ii]]])
+        }
+        
+      }
+    }
+)
+
+```
+

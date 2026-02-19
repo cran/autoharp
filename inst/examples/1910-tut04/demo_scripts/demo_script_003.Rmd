@@ -1,0 +1,82 @@
+---
+title: "Tutorial 4"
+output: html_document
+---
+```{r}
+# setting up
+library(stringr)
+library(rvest)
+```
+
+
+# Q1
+
+```{r}
+den_clusters <- readRDS("../data/dengue_cluster_2014-09-09.rds")
+class(den_clusters) <- "clustersS3"
+
+poly_area <- function(xy_mat) {
+  require(sp)
+  tmp_p <- Polygons(list(Polygon(xy_mat)), "id")
+  tmp_p@area
+}
+
+as.data.frame.clustersS3 <- function(x) {
+  
+  descr <- sapply(2:51, function(y) 
+    den_clusters[[1]][[y]]$DESCRIPTION)
+  
+  num_cases <- sapply(2:51, function(y) 
+    den_clusters[[1]][[y]]$`Number of cases`)
+  
+  area_in_km <- sapply(2:51, function(y) poly_area(
+    matrix(as.numeric(unlist(str_split(
+      den_clusters[[1]][[y]]$XY, "[,|]"))), 
+      ncol = 2, byrow = TRUE))/1e6)
+  
+  data.frame(descr, num_cases, area_in_km,
+             stringsAsFactors = FALSE)
+}
+
+summary.clustersS3 <- function(x) {
+
+  cluster_df <- as.data.frame(x)
+  Num_clusters <- nrow(cluster_df)
+  Num_cases <- sum(as.numeric(cluster_df$num_cases))
+  Total_area <- sum(cluster_df$area_in_km)
+  
+  cat("Cluster Summary:\n")
+  cat("----------------\n")
+  cat("No. of clusters:\t", Num_clusters, "\n")
+  cat("No. of cases   :\t", Num_cases, "\n")
+  cat("Total area     :\t", round(Total_area, digits = 2), "km2")
+  
+}
+
+```
+
+# Q2
+
+```{r}
+
+blog_url <- paste0("https://www.r-bloggers.com/2017/05/page/")
+#page_1 <- read_html(paste0(blog_url, 1, "/"))
+titles <- NULL
+dates <- NULL
+
+n <- 2
+while (n <= 10) {
+  page_append <- paste0(n,"/")
+  url <- paste0(blog_url, page_append)
+  indiv_page <- read_html(url)
+  read_page <- tryCatch(indiv_page, error = function(e)  {paste0("error at page:\t", n)})
+  titles <- c(titles, html_text(html_elements(indiv_page, ".loop-title a")))
+  dates <- c(dates, html_text(html_nodes(read_page, ".meta")))
+  cat(paste0("Done with page:\t", n, "\n"))
+  n <- n + 1 
+}
+
+titles_df <- data.frame(titles, dates, stringsAsFactors = FALSE)
+head(titles_df)
+```
+

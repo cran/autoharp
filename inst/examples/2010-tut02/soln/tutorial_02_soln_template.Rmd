@@ -1,0 +1,70 @@
+---
+title: "Tutorial 2 Worksheet AY 20/21 Sem I"
+subtitle: DSA2101
+output:
+  pdf_document:
+  html_document: default
+---
+
+```{r}
+wine_data <- readLines("../data/wine.txt")
+ind_tokens <- readRDS("../data/kjv_ind_tokens.rds")
+
+# data cleaning.
+wine_data <- wine_data[wine_data != ""]
+wine_data <- wine_data[1:(length(wine_data)-1)]
+
+library(stringr)
+tmp_obj <- str_replace_all(wine_data, "[:punct:]", "")
+tmp_obj <- str_to_lower(tmp_obj)
+tmp_obj <- str_split(tmp_obj, pattern="\\s")
+wine_review_list <- sapply(tmp_obj, 
+                           Filter, f = function(z) nchar(z) > 3, 
+                           USE.NAMES = FALSE)
+
+jacc_ind <- function(x, y) {
+  uniq_x <- unique(x)
+  uniq_y <- unique(y)
+  denom <- length(union(uniq_x, uniq_y))
+  numer <- length( intersect(uniq_x, uniq_y) )
+  numer/denom
+}
+```
+
+Test chunks begin here:
+
+```{r test_001, autoharp.scalars=c("exists_wine", "exists_jac")}
+library(stringr)
+exists_wine <- exists("wine_review_list")
+exists_jac <- exists("jacc_ind")
+```
+
+```{r test_002, autoharp.scalars=c("len_wine_list", "num_stringr_calls", "num_apply_calls")}
+if(exists_wine) {
+  len_wine_list <- length(wine_review_list)
+} else {
+  len_wine_list <- NA_integer_
+}
+
+f1 <- rmd_to_forestharp(.myfilename)
+if(is(f1, "logical")){
+  num_stringr_calls <- num_apply_calls <- NA_integer_
+} else {
+  num_stringr_calls <- fapply(f1, count_fn_call, pkg_name = "stringr")
+  num_apply_calls <- fapply(f1, count_fn_call, combine=TRUE, pattern="apply$")
+}
+```
+
+```{r test_003, autoharp.objs=c("wine_review_list"), autoharp.scalars=c("jac_test_1", "jac_test_2")}
+if(exists_jac) {
+  jac_test_1 <- jacc_ind(.wine_review_list[[62]],
+                         .wine_review_list[[73]])
+  jac_test_2 <- jacc_ind(.wine_review_list[[87]],
+                         .wine_review_list[[88]])
+} else {
+  jac_test_1 <- jac_test_2 <- NA_real_
+}
+```
+
+
+

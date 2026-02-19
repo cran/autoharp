@@ -1,0 +1,160 @@
+---
+title: "assignment01-data.Rmd"
+output: html_document
+date: "2022-08-22"
+---
+
+## Read in student data
+
+```{r}
+library(tidyverse)
+library(readxl)
+
+class_list <- read_excel("../../class_material/AY2223_Sem1/dsa2101_roster_18-08-2022.xlsx")
+
+dir.create("all_data")
+
+```
+
+
+```{r}
+artist_nation <- read.csv("../../data/artist_data.csv") %>% 
+  select(name, gender, dates, placeOfBirth, placeOfDeath)
+male_noise <- c("mal", "M.", "m.", "male")
+female_noise <- c("femle", "F.", "f.", "female")
+gender_noise <- list(Male = male_noise, Female=female_noise)
+born_misspelling <- c("b.", "Born", "B.")
+
+set.seed(92)
+#for (user_id in class_list$`Student SIS ID`[1:5]) {
+for (user_id in class_list$`Student SIS ID`) {
+  print(user_id)
+  
+  # akima data
+  fn1 <- ecdf(rnorm(50))
+  x_vals <- seq(-2, 2, length.out=30)
+  y_vals <- fn1(x_vals)
+  
+  data1 <- cbind(x_vals, y_vals)
+  
+  noise <- sample(c("char", "re-order", "missing-x", "missing-y"), size=1)
+  if(noise == "char"){
+    x_y <- sample(2, size=1)
+    data1[,x_y] <- as.character(data1[,x_y])
+  } else if (noise == "re-order"){
+    ids <- sample(NROW(data1), size=2, replace=FALSE)
+    tmp <- data1[ids[1], ]
+    data1[ids[1],] <- data1[ids[2],]
+    data1[ids[2],] <- tmp
+  } else if(noise == "missing-x"){
+    ids <- sample(NROW(data1), size=1)
+    data1[ids, 1] <- NA_real_
+  } else {
+    ids <- sample(NROW(data1), size=1)
+    data1[ids, 2] <- NA_real_
+  }
+  
+  ## artist data
+  tmp_data <- artist_nation
+  
+  # Step 1: male/female
+  mf <- sample(c("Male", "Female"), size=1)
+  gender_ids <- which(artist_nation$gender == mf)
+  sample_genders <- sample(gender_ids, size=10, replace=FALSE)
+  tmp_data$gender[sample_genders] <- sample(gender_noise[[mf]], size=10, 
+                                            replace = TRUE)
+  
+  # Step 2: births
+  born_ids <- str_which(tmp_data$dates, "born")
+  sample_born <- sample(born_ids, size=10, replace=FALSE)
+  rep_born <- sample(born_misspelling, size=10, replace=TRUE)
+  tmp_data$dates[sample_born] <- str_replace(tmp_data$dates[sample_born],
+                                             "born", rep_born) 
+  
+  stud_data <- list(akima_data = data1, artist_data = tmp_data)
+  saveRDS(stud_data, 
+          file=file.path("all_data", paste0(user_id,".rds")))
+}
+
+```
+
+
+
+## Akima data
+
+```{r}
+userid <- "e000000"
+
+fn1 <- ecdf(rnorm(50))
+x_vals <- seq(-2, 2, length.out=30)
+y_vals <- fn1(x_vals)
+
+data1 <- cbind(x_vals, y_vals)
+
+noise <- sample(c("char", "re-order", "missing-x", "missing-y"), size=1)
+if(noise == "char"){
+  x_y <- sample(2, size=1)
+  data1[,x_y] <- as.character(data1[,x_y])
+} else if (noise == "re-order"){
+  ids <- sample(NROW(data1), size=2, replace=FALSE)
+  tmp <- data1[ids[1], ]
+  data1[ids[1],] <- data1[ids[2],]
+  data1[ids[2],] <- tmp
+} else if(noise == "missing-x"){
+  ids <- sample(NROW(data1), size=1)
+  data1[ids, 1] <- NA_real_
+} else {
+  ids <- sample(NROW(data1), size=1)
+  data1[ids, 2] <- NA_real_
+  
+}
+
+#plot(x_vals, y_vals)
+```
+
+## artist data
+
+```{r}
+library(tidyverse)
+
+tmp_data <- artist_nation
+
+# Step 1: male/female
+mf <- sample(c("Male", "Female"), size=1)
+gender_ids <- which(artist_nation$gender == mf)
+sample_genders <- sample(gender_ids, size=10, replace=FALSE)
+tmp_data$gender[sample_genders] <- sample(gender_noise[[mf]], size=10, 
+                                          replace = TRUE)
+
+
+# Step 2: births
+born_ids <- str_which(tmp_data$dates, "born")
+sample_born <- sample(born_ids, size=10, replace=FALSE)
+rep_born <- sample(born_misspelling, size=10, replace=TRUE)
+tmp_data$dates[sample_born] <- str_replace(tmp_data$dates[sample_born],
+                                           "born", rep_born) 
+```
+
+
+```{r eval=FALSE}
+str_extract(artist_nation$dates, "[:alpha:]+") %>% 
+  Filter(function(x) !is.na(x), .) #%>% table()
+
+str_extract(artist_nation$dates, "(?<=born ).*") %>% 
+  Filter(function(x) !is.na(x), .)
+```
+
+```{r EVAL=FALSE}
+str_extract(artist_nation$placeOfBirth, "([:alpha:]+)$") %>% unique() %>% 
+  sort()
+
+str_extract(artist_nation$placeOfBirth, "(?<=, ).+$") %>% unique() %>% sort
+
+# ok?
+str_extract(artist_nation$placeOfBirth, "[^,]+$") %>% 
+  str_trim() %>% unique() %>% sort() -> mtd_1
+
+str_match(artist_nation$placeOfBirth, "(.+, )?(.+)$") -> out
+mtd_2 <- out[,3] %>% unique() %>% sort()
+```
+

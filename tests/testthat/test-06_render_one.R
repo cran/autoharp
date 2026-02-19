@@ -12,7 +12,7 @@ if(rmarkdown::pandoc_available()) {
     corr_out_3 <- as.data.frame(render_one("example_03.R", "test_output", ".",  soln_stuff = soln_out))
     test_that("Rendering2", {
       expect_equal(corr_out_2[1, "Y1"], "C")
-      expect_equal(corr_out_3[1, 6], NA)
+      expect_equal(corr_out_3[1, 8], NA)
     })
 
 }

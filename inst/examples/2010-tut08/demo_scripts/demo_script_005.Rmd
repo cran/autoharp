@@ -1,0 +1,52 @@
+---
+output: html_document
+---
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(stringr)
+```
+
+```{r}
+players_info <- read_excel("../data/player_info_fifa2018.xlsx")
+tracking <- read_excel("../data/player_tracking_fifa2018.xlsx") %>%
+  separate(time_played, c("min", "sec"), extra = "drop") %>%
+  mutate(time_played = as.numeric(min) + as.numeric(sec) / 60) %>%
+  select(-c(min, sec))
+match_schedule <- read_excel("../data/match_schedule.xlsx")
+```
+
+```{r}
+tracking_30min <- tracking %>%
+  filter(time_played >= 30) %>%
+  inner_join(players_info, by = c("jersey" = "Jersey", "team" = "Country")) %>%
+  filter(Pos != "GK") %>%
+  select(c(team, Pos, top_speed)) %>%
+  group_by(team, Pos) %>%
+  summarise(median = median(top_speed), .groups = "drop") %>%
+  mutate(Pos = recode(Pos, DF = "Defender", FW = "Forward", MF = "Midfielder")) %>%
+  pivot_wider(names_from = "Pos", values_from = "median") %>%
+  mutate(FW_slower = ifelse(Forward > Midfielder, FALSE, TRUE)) %>%
+  pivot_longer(Defender:Midfielder, names_to = "Position", values_to = "median")
+tracking_30min$Position <- factor(tracking_30min$Position,
+                             levels = c("Defender", "Midfielder", "Forward"))
+FW_smaller <- tracking_30min %>%
+  filter(FW_slower == TRUE, Position == "Forward")
+ggplot(tracking_30min) +
+  geom_line(aes(x = Position, y = median, group = team, color = FW_slower)) +
+  theme(legend.position = "none") +
+  geom_text(FW_smaller, mapping = aes(x = Position, y = median, label = team,
+                                      hjust = "left"), size = 2.5) +
+  ylab("km/h") +
+  labs(title = "Median Top Speed by Position",
+  subtitle = "Most teams' forwards sprint faster than their midfielders, but not all..")
+```
+
+```{r}
+box <- ggplot(tracking_30min) +
+  geom_boxplot(mapping = aes(x = Position, y = median))
+facet <- ggplot(tracking_30min) +
+  geom_point(mapping = aes(x = team, y = median)) +
+  facet_wrap(vars(Position))
+```

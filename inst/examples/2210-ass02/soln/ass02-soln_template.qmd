@@ -1,0 +1,130 @@
+---
+title: "AY 22/23 Assignment 2 Solution Template"
+format: html
+---
+
+```{r}
+read.fe_data <- function(path_to_dir, user, facial_expression) {
+  all_facial_exp <- c("affirmative", "conditional", "doubts_question", 
+                      "emphasis",  "negative",  "relative",
+                      "topics", "wh_question", "yn_question")
+  facial_expression <- match.arg(facial_expression, all_facial_exp)
+  
+  fnames <- paste(paste(user, facial_expression, 
+                        c("datapoints", "targets"), sep="_"), ".txt", sep="")
+  output_vec <- scan(file.path(path_to_dir, fnames[1]), skip = 1)
+  binary_class <- scan(file.path(path_to_dir, fnames[2]))
+  l_o_vec <- length(output_vec)
+  output_array <- array(output_vec[-seq(1, l_o_vec, by=301)], 
+                        dim=c(3, 100, length(binary_class)))
+  output_array <- aperm(output_array, c(2,1,3))
+  
+  
+  tmp_df <- data.frame(timestamp= output_vec[seq(1, l_o_vec, by=301)],
+                       user = user, facial_expression=facial_expression, 
+                       fe_present=binary_class)
+  output_obj <- list(frames=output_array, info=tmp_df)
+  class(output_obj) <- "gfe"
+  output_obj
+}
+`[.gfe` <- function(x, i) {
+  num_frames <- NROW(x$info)
+  
+  if(is(i, "logical")){
+    if(length(i) < num_frames)
+      i <- rep(i, length.out=num_frames)
+    i <- which(i)
+  } 
+  
+  if(is(i, "numeric"))
+    i <- as.integer(i)
+  
+  if(all(i < 0)) {
+    i <- (1:num_frames)[i]
+  }
+  
+  x$frames <- x$frames[ , , i]
+  x$info <- x$info[i, ]
+  x
+}
+
+box_muller <- function(n=20) {
+  if(n %% 2 == 1)  {
+    nn <- n + 1
+  } else {
+    nn <- n
+  }
+  U <- matrix(runif(nn), ncol=2)
+  X1 <- sqrt(-2*log(U[,1]))*cos(2*pi*U[,2])
+  X2 <- sqrt(-2*log(U[,1]))*sin(2*pi*U[,2])
+  c(X1, X2)[1:n]
+}
+
+```
+
+
+```{r test_simple}
+#| autoharp.scalars: ['for_loop', 'lambda_fn', 'apply_count']
+f1 <- rmd_to_forestharp(.myfilename, TRUE)
+if(is(f1, "logical")){
+  for_loop <- lambda_fn <- apply_count <- NA_integer_
+} else {
+  for_loop <- fapply(f1, count_fn_call, pattern = "^for$")
+  lambda_fn <- fapply(f1, count_lam_fn)
+  apply_count <- fapply(f1, count_fn_call, pattern = "apply")
+}
+```
+
+```{r test_nested_for}
+#| autoharp.scalars: ['nested_for_used']
+if(!is(f1, "logical")){
+  nested_for_used <-  fapply(f1, detect_nested_for, combine=TRUE, 
+                             combiner_fn = function(x) any(unlist(x)))
+} else {
+  nested_for_used <- NA
+}
+```
+
+```{r test_box_muller}
+#| autoharp.scalars: ['xs_bm', 'bm_len']
+xs_bm <- exists('box_muller', mode='function')
+if(xs_bm){
+  even_len <- tryCatch(length(box_muller(10)) == 10,  error = function(e) e)
+  odd_len <- tryCatch(length(box_muller(7)) == 7,  error = function(e) e)
+  if(is(even_len, "error") || is(odd_len, "error")){
+    bm_len <- NA
+  }
+  if(even_len && odd_len) {
+    bm_len <- TRUE
+  } else {
+    bm_len <- FALSE
+  }
+}
+```
+
+
+
+```{r test_compute_slopes}
+#| autoharp.scalars: ['xs_read_fn', 'xs_extractor']
+xs_read_fn <- exists("read.fe_data", mode = "function")
+xs_extractor <- exists("[.gfe", mode = "function")
+```
+
+```{r test_functions}
+#| autoharp.scalars: ['dim_full', 'dim_sub']
+if(xs_read_fn) {
+  gfe_obj <- read.fe_data("/home/viknesh/NUS/coursesTaught/autoharp/mytesting/examples/2210-ass02/data/grammatical_facial_expression",   
+                          "b", "emphasis")
+  dim_full <- paste0(dim(gfe_obj$frames), collapse=",")
+} else {
+  dim_full <- NA_character_
+}
+if(xs_extractor && xs_read_fn) {
+  sub_gfe_obj <- gfe_obj[1:3]
+  dim_sub <- paste0(dim(sub_gfe_obj$frames), collapse=",")
+} else {
+  dim_sub <- NA_character_
+}
+```
+
+

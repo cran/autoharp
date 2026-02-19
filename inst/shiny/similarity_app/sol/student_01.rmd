@@ -1,0 +1,81 @@
+---
+title: "Student 01 Testing"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 1: Basic Calculations
+
+Students should compute the mean and standard deviation of a vector.
+
+```{r solution_objects}
+# Solution objects that students should create
+X <- 1:20
+Y <- c(5, 10, 15, 20, 25)
+Z <- rnorm(100, mean = 10, sd = 3)
+```
+
+## Problem 2: Custom Function
+
+Students should create a function that computes the square of a number.
+
+```{r solution_function}
+# Solution function
+square_number <- function(n) {
+  return(n*n)
+}
+
+# Expected result
+expected_result <- square_number(5)
+```
+
+
+## Problem 3: Data Manipulation
+
+Students should filter a data frame.
+
+```{r solution_data}
+# Solution data manipulation
+original_df <- data.frame(
+  name = c("Alice", "Bob", "Charlie", "Diana"),
+  age = c(25, 30, 35, 28),
+  score = c(85, 92, 78, 95)
+)
+
+filtered_df <- original_df[original_df$score > 80, ]
+```
+
+
+
+```{r solution_plot}
+library(tidyverse)
+
+ggplot(filtered_df) +
+  geom_point(aes(x = age, y = score)) +
+  theme_dark()
+
+
+par(mfrow = c(2, 2))
+
+# Panel 1: Line plot
+t <- seq(0, 2*pi, length.out = 100)
+plot(t, sin(t), type = "l", col = "blue", main = "Sine Wave")
+
+# Panel 2: Points
+plot(rnorm(50), rnorm(50), pch = 16, col = "red", main = "Random Points")
+
+# Panel 3: Bar plot
+barplot(c(3, 7, 4, 9, 2), names.arg = LETTERS[1:5], col = "purple", main = "Bar Chart")
+
+# Panel 4: Pie chart
+pie(c(30, 25, 20, 15, 10), 
+    labels = c("A: 30%", "B: 25%", "C: 20%", "D: 15%", "E: 10%"),
+    main = "Pie Chart")
+```
+
+
+
+

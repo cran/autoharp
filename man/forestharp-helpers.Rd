@@ -9,6 +9,7 @@
 \alias{extract_formal_args}
 \alias{extract_assigned_objects}
 \alias{extract_actual_args}
+\alias{count_num_lines_for_loop}
 \alias{detect_growing}
 \alias{detect_for_in_fn_def}
 \alias{count_fn_in_fn}
@@ -30,7 +31,9 @@ extract_formal_args(th, fn_name)
 
 extract_assigned_objects(th)
 
-extract_actual_args(th)
+extract_actual_args(th, include_assigned_obj = TRUE)
+
+count_num_lines_for_loop(th)
 
 detect_growing(th, count = FALSE, within_for = FALSE)
 
@@ -58,6 +61,11 @@ this to work. In order to avoid picking up duplicate names, for instance
 \code{\link{get_libraries}} on the file as well, and match against it.}
 
 \item{fn_name}{Function name, as a character string}
+
+\item{include_assigned_obj}{A Boolean flag. If TRUE (default), it also returns
+the name of the assigned object. If FALSE, it drops the name of the assigned 
+object. The FALSE flag is useful for when checking if the we wish to match the 
+assigned object from a previous call with the actual argument in this call.}
 
 \item{count}{For \code{detect_growing}, this is a logical value that indicates
 if the number of "grow" expressions should be counted and returned, or if just a
@@ -136,6 +144,13 @@ Extracts the actual arguments from an expression, not the formal
 arguments. It only returns syntactic literals. It should be improved
 to return the actual arguments for a specified function so that something
 similar to \code{extract_assigned_objects} could be returned.
+
+\item \code{count_num_lines_for_loop()}: Counts number of lines in a for loop
+
+Extracts the actual arguments from an expression, not the formal
+First, this function checks if the expression contains a for loop. 
+If it does, the innermost \code{for} loop is identified. Finally, the 
+number of expressions below it is counted and returned.
 
 \item \code{detect_growing()}: Detects if a vector is being grown.
 

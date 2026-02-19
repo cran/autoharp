@@ -14,7 +14,7 @@
 #'
 rmd_to_token_count <- function(fname, include_actuals=TRUE) {
   # get fharp object
-  fh <- rmd_to_forestharp(fname, FALSE)
+  fh <- rmd_to_forestharp(fname, FALSE)$forest
 
   # remove NA entries
   fh <- Filter(function(x) class(x) == "TreeHarp", fh)

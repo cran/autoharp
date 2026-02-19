@@ -1,0 +1,57 @@
+---
+output: html_document
+---
+**Question1**
+```{r Q1}
+library(stringr)
+
+listed_ind_tokens <- str_split(readRDS("../data/kjv_ind_tokens.rds"), 
+                               pattern = "(?=[:punct:]|[:blank:])")
+ind_tokens <- unlist(listed_ind_tokens, recursive=FALSE)
+ind_tokens <- str_trim(ind_tokens)
+ind_tokens <- ind_tokens[ind_tokens != ""]
+
+len <- length(ind_tokens)
+
+God <- data.frame(which(ind_tokens %in% "God"), 6)
+Joseph <- data.frame(which(ind_tokens %in% "Joseph"), 4)
+Cain <- data.frame(which(ind_tokens %in% "Cain"), 2)
+
+par(las=1)
+plot(God, pch = '|', xlab = 'Token position', ylab = '', ylim = c(0, 8), yaxt = "n",
+     main="When Characters Are Mentioned in KJV", font.main=2, col="red")
+axis(2, at=c(6,4,2), labels=c("God", "Joseph", "Cain"))
+lines(Joseph, type = "p", pch = '|', ylab = '', col="red")
+lines(Cain, type = "p", pch = '|', ylab = '', col="red")
+```
+
+**Question2**
+```{r Q2}
+wine <- readLines("../data/wine.txt")
+wine <- wine[wine != ""]
+wine <- wine[1 : length(wine) - 1]
+
+wine_temp <- str_replace_all(wine, "[:punct:]", "")
+wine_temp <- str_to_lower(wine_temp)
+wine_temp <- str_split(wine_temp, pattern="\\s")
+
+keeped <- lapply(wine_temp, function(x) which(nchar(x) > 3))
+wine_review_list <- mapply(function(x, y) x[y], x = wine_temp, y = keeped)
+
+```
+
+**Question3**
+```{r Q3}
+jacc_ind <- function(x, y) {
+  x_new <- unique(x)
+  y_new <- unique(y)
+  length(intersect(x_new, y_new)) / length(union(x_new, y_new))
+}
+```
+
+**Question4**
+```{r Q4}
+all_possible_pairs <- combn(length(wine_review_list), 2)
+result <- apply(all_possible_pairs, 2,
+      function(x) jacc_ind(wine_review_list[x[1]], wine_review_list[x[2]]))
+```

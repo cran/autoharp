@@ -63,7 +63,7 @@ replace_sp_chars_filename <- function(dir_name, return_df = TRUE) {
 #'
 clean_dir <- function(dir_name, verbose=FALSE) {
   all_md_files <- list.files(dir_name, pattern="md$")
-  root_names <- sapply(all_md_files, remove_extension, USE.NAMES = FALSE) %>%
+  root_names <- sapply(all_md_files, xfun::sans_ext, USE.NAMES = FALSE) %>%
     unique()
 
   html_ver <- paste0(root_names, ".html")
@@ -77,47 +77,6 @@ clean_dir <- function(dir_name, verbose=FALSE) {
     }
     unlink(file.path(dir_name, all_to_remove), recursive = TRUE)
   }
-}
-
-#' Obtains the Root File Name, without Extension.
-#'
-#' This function hard codes some of the common extensions that we deal with.
-#' 
-#' @param fname A character string of the filename, with the extension present.
-#'
-#' @return A character string, with the extension removed.
-#' 
-#' @details If none of the known extensions knit.md, utf8.md, R or Rmd are 
-#' found, then the last period onwards are removed. See the examples.
-#' 
-#' If no extensions are found, the original filename is returned.
-#' 
-#' @export
-#' @examples
-#'
-#' remove_extension("test.Rmd")
-#' remove_extension("test.knit.md")
-#' remove_extension("test.r.txt")
-#' remove_extension("test_no_extension")
-#'
-remove_extension <- function(fname) {
-  if(stringr::str_detect(fname, "\\.knit\\.md$"))
-    return(stringr::str_sub(fname, end=-9))
-
-  if(stringr::str_detect(fname, "\\.utf8\\.md$"))
-    return(stringr::str_sub(fname, end=-9))
-
-  if(stringr::str_detect(fname, "\\.html$"))
-    return(stringr::str_sub(fname, end=-6))
-
-  if(stringr::str_detect(stringr::str_to_lower(fname), "\\.rmd$"))
-    return(stringr::str_sub(fname, end=-5))
-  
-  if(stringr::str_detect(stringr::str_to_lower(fname), "\\.r$"))
-    return(stringr::str_sub(fname, end=-3))
-  
-  out <- stringr::str_extract(fname, ".+(?=\\..*$)")
-  if(is.na(out)) return(fname) else return(out)
 }
 
 #' Extracts the Packages Used in An Rmd File.
@@ -187,21 +146,36 @@ extract_chunks <- function(rmd_name, pattern) {
     pattern <- ".*"
   }
   all_lines <- readLines(rmd_name, warn=FALSE)
-  begin_ids <- which(stringr::str_detect(all_lines, knitr::all_patterns$md$chunk.begin))
-  end_ids <- which(stringr::str_detect(all_lines, knitr::all_patterns$md$chunk.end))
-
-  all_chunks <- mapply(function(x, y) all_lines[x:y],
-                       x= begin_ids, y=end_ids, SIMPLIFY = FALSE)
-  kept_chunks <- Filter(function(x) stringr::str_detect(x[1], pattern), all_chunks)
-
+  kept_chunks <- NULL
+  copy_out <- FALSE
+  
+  for(ii in seq_along(all_lines)){
+    cur_line <- all_lines[ii]
+    
+    if(stringr::str_detect(cur_line, knitr::all_patterns$md$chunk.begin)){
+      if(stringr::str_detect(cur_line, pattern)) {
+        copy_out <- TRUE
+        chunk_lines <- NULL
+      }
+    }
+    
+    if(copy_out){
+      chunk_lines <- c(chunk_lines, cur_line)
+    }
+    
+    if(stringr::str_detect(cur_line, knitr::all_patterns$md$chunk.end)){
+      if(copy_out) {
+        copy_out <- FALSE
+        kept_chunks <- c(kept_chunks, list(chunk_lines))
+      }
+    }
+    
+  }
+  
   if(length(kept_chunks) == 0)
     return(NULL)
-  else {
+  else 
     return(kept_chunks)
-  #else if (length(kept_chunks) == 1){
-  #  return(kept_chunks[[1]])
-  #} else {
-  }
 }
 
 #' Extract non-chunks from an Rmd file.
@@ -303,7 +277,7 @@ autoharp_hooks <- list(
       
       if(".scalars_to_keep" %in% names(envir)) {
         xset <- assign(".scalars_to_keep", 
-                 c(checkout, get(".scalars_to_keep", envir = envir)), envir = envir)
+                 c(get(".scalars_to_keep", envir = envir), checkout), envir = envir)
       } else {
         xset <- assign(".scalars_to_keep", checkout, envir = envir)
       }

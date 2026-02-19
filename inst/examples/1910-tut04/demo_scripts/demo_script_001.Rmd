@@ -1,0 +1,44 @@
+---
+output: html_document
+---
+
+library(stringr)
+library(sp)
+
+den_clusters <- readRDS("~/Downloads/NUS/DSA2101/data/dengue_cluster_2014-09-09.rds")
+
+poly_area <- function(xy_mat) {
+  require(sp)
+  tmp_p <- Polygons(list(Polygon(xy_mat)), "id") 
+  tmp_p@area
+}
+
+get_coords <- function(x){
+  XY_str <- str_split(x$XY,"\\|")[[1]]
+  XY_str <- str_split(XY_str,",")
+  XY_num <- sapply(XY_str,as.numeric)
+}
+
+as.data.frame.clusters <- function(x){
+  XY <- lapply(x[[1]][-1],get_coords)
+  areas <- sapply(XY,poly_area)/1e6
+  descr <- sapply(x[[1]][-1], function(z) z$DESCRIPTION)
+  num_cases <- sapply(x[[1]][-1],function(z) as.numeric(z[[2]]))
+  data.frame(descr=descr, num_cases=num_cases,area=areas,stringsAsFactors = FALSE)
+}
+
+summary.clusters <- function(x,...){
+  clusters_df <- as.data.frame(x)
+  num_clusters <- nrow(clusters_df)
+  total_number_cases <- sum(clusters_df$num_cases)
+  total_area <- sum(clusters_df$area)
+  cat("cluster summary:\n")
+  cat("----------------\n")
+  cat("No. of clusters:\t",as.character(num_clusters),"\n")
+  cat("No. of cases   :\t",as.character(total_number_cases),"\n")
+  cat("Total area     :\t",as.character(round(total_area,2)),"km2 \n")
+}
+
+as.data.frame(den_clusters)[8:10,]
+summary(den_clusters)
+

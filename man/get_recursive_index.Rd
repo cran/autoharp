@@ -23,6 +23,6 @@ Obtains an index that can be used to extract a sub-call from a language object.
 ex3 <- quote(x <- f(y = g(3, 4), z=1L))
 t1 <- TreeHarp(ex3, TRUE)
 rec_index <- get_recursive_index(t1, 6)
-ex3[[rec_index + 1]]
-ex3[[get_recursive_index(t1, 3)+1]]
+ex3[[rec_index]]
+ex3[[get_recursive_index(t1, 3)]]
 }

@@ -33,6 +33,11 @@ wrap_chunk <- function(chunk) {
 #' argument is passed on to \code{\link[knitr]{knit}}, so please refer to 
 #' that page for the warnings about setting this argument when figures are 
 #' involved.
+#' @param dummy A logical value. If TRUE, then a dummy solution object is created
+#' The environment will be empty, and the temporary test script will only have 
+#' one line in it: `ah_dummy <- TRUE`. This solution object can be used to render 
+#' a solution file without any correctness checks. Of course, one could just knit 
+#' it directly, but this is still useful when testing things out.
 #'
 #' @details  Test code should be written in a chunk that generates scalars 
 #' from student objects.
@@ -43,7 +48,7 @@ wrap_chunk <- function(chunk) {
 #' In addition, if it is required that a solution object is to be tested against
 #' the analogous object within the student environment, these objects should be 
 #' listed within the autoharp.objs option of a code chunk. These objects will be 
-#' copied with the "." preffix.
+#' copied with the "." prefix.
 #' 
 #' Here is an overview of how the function works:
 #' \enumerate{
@@ -70,8 +75,14 @@ wrap_chunk <- function(chunk) {
 #' @seealso \code{\link{check_correctness}}, \code{\link{render_one}}
 #'
 populate_soln_env <- function(soln_fname, pattern, knit_root_dir, 
-                              render_only=FALSE, output=NULL) {
+                              render_only=FALSE, output=NULL, dummy=FALSE) {
 
+  if(dummy) {
+      e_soln <- new.env()
+      tmp_fname <- tempfile(pattern = "test", fileext = ".R")
+      cat("ah_dummy <- TRUE\n", file=tmp_fname)
+      return(list(env=e_soln, test_fname = tmp_fname))
+  }
   e_soln <- new.env()
   e_soln$.myfilename <- normalizePath(soln_fname)
   if(!missing(knit_root_dir)){

@@ -23,6 +23,7 @@
 #' FAIL or UNKNOWN.
 #'
 #' @importFrom parallel makePSOCKcluster clusterEvalQ clusterCall stopCluster clusterExport
+#' @importFrom rmarkdown render
 #' @return A data frame with one row for each file in the input directory.
 #' @seealso \code{\link{populate_soln_env}}, \code{\link{check_correctness}}
 #' @export
@@ -68,7 +69,7 @@ render_one <- function(rmd_name, out_dir, knit_root_dir, log_name, soln_stuff,
     }
 
     # Remove related files from out_dir
-    root_name <- remove_extension(basename(rmd_name))
+    root_name <- xfun::sans_ext(basename(rmd_name))
     unlink(paste0(file.path(out_dir, root_name), "*"))
     
     # prepare out_df
@@ -106,6 +107,16 @@ render_one <- function(rmd_name, out_dir, knit_root_dir, log_name, soln_stuff,
           return(out_df)
         }
       }
+    }
+    
+    # Perform pre-checks
+    pre_check_status <- render_prechecks(rmd_name)
+    if(!pre_check_status) {
+      status <- "FAIL"
+      cat(rmd_name, ":", status, "\n", file=out_file, append=TRUE)
+      cat("Precheck failed.. system( ) calls present or purl failed.", '\n', file=out_file, append=TRUE)
+      out_df <- dplyr::bind_cols(out_df, run_status = status)
+      return(out_df)
     }
 
     .myenv <- new.env()
@@ -156,7 +167,9 @@ render_one <- function(rmd_name, out_dir, knit_root_dir, log_name, soln_stuff,
         clusterEvalQ(worker_proc, 
                       corr_out <- check_correctness(.myenv, soln_stuff$env, 
                                                     soln_stuff$test_fname))
+        
         corr_out <- clusterCall(worker_proc, get, "corr_out")[[1]]
+        
         if("error" %in% class(corr_out)){
           status <- "FAIL"
           cat(rmd_name, ":", status, "\n", file=out_file, append=TRUE)

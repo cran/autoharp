@@ -1,0 +1,63 @@
+---
+output: html_document
+---
+
+```{r packages}
+library(dplyr)
+library(readxl)
+library(stringr)
+library(ggplot2)
+library(lubridate)
+```
+
+```{r}
+tracking <- read_excel("../data/player_tracking_fifa2018.xlsx")
+player_info <- read_excel("../data/player_info_fifa2018.xlsx")
+test <- left_join(tracking, player_info, by = c("jersey" = "Jersey", "team" = "Country"))
+mins <- as.numeric(str_split(test$time_played, pattern = "'")[[1]][1])
+secs <- str_split(test$time_played, pattern = "'")[[1]][2] %>%
+  str_extract(pattern = "[:digit:]*")
+for (i in 2:nrow(test)) {
+  mins <- c(mins, as.numeric(str_split(test$time_played, pattern = "'")[[i]][1]))
+  secs <- c(secs, str_split(test$time_played, pattern = "'")[[i]][2]) %>%
+    str_extract(pattern = "[:digit:]*") %>%
+    as.numeric()
+}
+tracking_time <- mutate(test, time_played = mins * 60 + secs)
+filter(tracking_time, mins >= 30, Pos != "GK") %>%
+  group_by(player_name) %>%
+  summarize(avg_sprint_seconds = sum(time_played) / sum(sprints))
+```
+## Question 2
+
+```{r}
+pass_data <- read_excel("../data/pass_completion_fifa2018.xlsx")
+first_rows <- sapply(pass_data[1, 9:11], rep, 8)
+first_col <- as_tibble(t(pass_data[1, 1:8]))
+pass_type <- c("long", "short", "medium", "total") %>%
+  rep(each = 2) %>%
+  rep(times = nrow(pass_data))
+status <- c("comp", "att") %>%
+  rep(times = nrow(pass_data) * 4)
+for (i in 2:nrow(pass_data)) {
+  new_rows <- sapply(pass_data[i, 9:11], rep, 8)
+  first_rows <- rbind(first_rows, new_rows)
+  new_col <- as_tibble(t(pass_data[i, 1:8]))
+  first_col <- rbind(first_col, new_col)
+}
+first_rows <- as_tibble(first_rows)
+pass_tidy <- mutate(first_rows, pass_type, status, count = first_col)
+```
+
+```{r}
+total_passes <- filter(pass_tidy, status == "att") %>%
+  group_by(country, pass_type) %>%
+  summarize(total = sum(count), .groups = 'drop')
+for (i in 1:nrow(total_passes)) {
+  total_passes[i, "total"] <- total_passes[i, "total"] /
+    total_passes[ceiling(i / 4) * 4, "total"]
+}
+filter(total_passes, pass_type != "total") %>%
+  group_by(country) %>%
+  summarize(entropy = -(sum(total * log(total))), .groups = 'drop')
+```

@@ -1,0 +1,104 @@
+---
+title: "Tutorial 8 Worksheet AY 20/21 Sem I"
+subtitle: DSA2101
+output:
+  html_document: default
+  pdf_document:
+    keep_tex: yes
+---
+
+Use the FIFA `player_tracking_fifa2018.xlsx`, `player_info_fifa2018.xlsx` and 
+`match_schedule.xlsx` to answer the following two questions.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+
+tracking <- read_excel("../data/player_tracking_fifa2018.xlsx") %>%
+  separate(time_played, sep = "'", into=c("min", "sec")) %>%
+  mutate(min= as.numeric(min), sec=str_replace_all(sec, "[^0-9]", "")) %>%
+  mutate(sec= as.numeric(sec), time_played = min + sec/60, .after=min)
+
+player_info <- read_excel("../data/player_info_fifa2018.xlsx")
+```
+
+## Question 1
+
+* Filter the tracking data to keep only the outfield players who played 30
+minutes or more.
+* Find the median top speed for each team within each position category. You 
+should now have three rows for each team. Recreate the following parallel coordinates 
+plot. It shows the median top speed for each position within a team.
+
+```{r echo=FALSE, fig.align='center', out.width="60%"}
+tracking_pos <- left_join(tracking, player_info, by=c("jersey" ="Jersey", "team"="Country"))
+teams_med_top_speed <- filter(tracking_pos, Pos != "GK", time_played > 30) %>%   
+  group_by(team, Pos) %>% 
+  summarise(med_top_speed = median(top_speed), .groups="drop") %>% 
+  mutate(Pos = factor(Pos, levels=c("DF", "MF", "FW")))
+
+teams_med_top_speed <- group_by(teams_med_top_speed, team) %>% 
+  mutate(mf_df = if_else(med_top_speed[Pos == "MF"] > med_top_speed[Pos == "DF"], "mf", "df"), 
+         mf_fw = if_else(med_top_speed[Pos == "MF"] > med_top_speed[Pos == "FW"], "mf", "fw"))
+         
+#ggplot(teams_med_top_speed) + geom_line(aes(x=Pos, y=med_top_speed, group=team, col=mf_df))
+
+p1 <- ggplot(teams_med_top_speed) + 
+  geom_line(aes(x=Pos, y=med_top_speed, group=team, col=mf_fw), 
+            alpha=0.8, show.legend = FALSE, lwd=0.6)
+p1 + geom_text(data=filter(ungroup(teams_med_top_speed), mf_fw == "mf", Pos == "FW"), 
+                aes(x=Pos, y=med_top_speed, label=team, hjust=-0.2), size=2.5)  + 
+  labs(title="Median Top Speed by Position", y="km/h", x="Position",
+       subtitle="Most teams' forwards sprint faster than their midfielders, but not all..") + 
+  scale_x_discrete(labels=c("Defender", "Midfielder", "Forward"), expand=expansion(add=.3))
+```
+
+# Question 2
+
+* Suppose we are interested to find out if teams play more conservatively during
+the knock-out stages of the World Cup.
+* Compute the average time spent in the opposition half for defenders in the group
+and the knock-out stages. 
+* Create a graphic that compares these two values.
+
+```{r echo=FALSE}
+match_schedule <- read_excel("../data/match_schedule.xlsx") %>% 
+  mutate(match_id = as.integer(match_id))
+match_schedule <- mutate(match_schedule, 
+                         stage = if_else(str_detect(match_info, "Group"), "group", "ko"))
+tracking_pos <- left_join(tracking_pos, select(match_schedule, match_id, stage))
+tmp_df <- filter(tracking_pos, Pos == "DF", time_played >= 30.0) %>% 
+  select(jersey, team, stage, time_oh) %>% 
+  mutate(time_oh= if_else(is.na(time_oh), "0%", time_oh)) %>% 
+  mutate(time_oh = as.numeric(str_replace_all(time_oh, "[^0-9]", "")))
+tmp_df <- tmp_df %>% group_by(jersey, team, stage) %>% 
+ add_tally() %>%  
+ filter(n >= 2) %>%
+  summarise(time_oh = mean(time_oh), .groups="drop") %>% 
+  pivot_wider(id_cols =c(jersey, team), names_from = "stage", 
+              values_from="time_oh") %>% 
+  filter(!is.na(group), !is.na(ko))
+
+cro_labels <- left_join(tmp_df, player_info, 
+                    by=c("jersey" = "Jersey", "team"="Country")) %>% 
+  filter(team == "CRO") %>% 
+  mutate(lname = str_extract(Name, "[A-Z]{2,}"),
+         label=paste0(lname, " (", team, ")"))
+  
+ggplot(tmp_df) + geom_jitter(aes(x=group, y=ko)) + 
+  geom_abline(slope=1, intercept=0, lty=2) +
+  geom_label(data=cro_labels, aes(x=group, y=ko, label=label),
+             hjust=1.1, vjust =c(0.5,0.8,0.5,0.5), size=2.5) + 
+  labs(title="Which defenders attacked more in the knock-out stages?", 
+subtitle="Only players who played more 30 mins in at least 2 games in each stage are included",
+       x="Group games (%-time in opposition half)",
+       y="Knock-out games (%-time in opposition half)") +
+  coord_cartesian(xlim=c(5, 55))
+```
+
+## Requirements
+
+You should create at least two graphics in your submission.
+
+You have freedom to interpret the second question; the idea is to try different 
+plots before settling on one.

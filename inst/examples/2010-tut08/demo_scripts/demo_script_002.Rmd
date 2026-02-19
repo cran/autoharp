@@ -1,0 +1,50 @@
+---
+output: html_document
+---
+
+##Library & Data
+```{r Library_Datasets}
+library(tidyverse)
+library(readxl)
+
+match_schedule_masterset <- read_excel("../data/match_schedule.xlsx")
+player_stats_masterset <- read_excel("../data/player_tracking_fifa2018.xlsx")
+player_info_masterset <- read_excel("../data/player_info_fifa2018.xlsx")
+```
+
+
+```{r}
+player_combined_masterset <- left_join(player_stats_masterset, player_info_masterset, by = c("jersey" = "Jersey", "team" = "Country")) %>%
+  select(match_id:Club, everything(), -player_name) %>%
+  rename('COB' = "team") %>%
+  separate(time_played, into = c("mins", "secs"), convert = TRUE) %>%
+  mutate(time_played = mins + (secs / 60)) %>%
+  select(match_id:jersey, time_played, everything(), -(mins:secs))
+```
+
+```{r Question 1}
+player_outfield_time_masterset <- player_combined_masterset %>%
+  filter(time_played >= 30, Pos != "GK")
+
+team_position_topspeed <- player_outfield_time_masterset %>%
+  group_by(COB, Pos) %>%
+  summarise(median_top_speed = median(top_speed, na.rm = TRUE), .groups = "drop") %>%
+  arrange(COB, match(.$Pos, c("DF", "MF", "FW")))
+
+team_midfield_faster <- team_position_topspeed %>%
+  pivot_wider(names_from = Pos, values_from = median_top_speed) %>%
+  filter(MF > FW)
+
+team_position_topspeed <- team_position_topspeed %>%
+  mutate(MF_faster = COB %in% team_midfield_faster$COB)
+
+ggplot(team_position_topspeed, aes(x = factor(Pos, levels = c("DF", "MF", "FW")), y = median_top_speed, group = COB)) +
+  geom_line(aes(color = MF_faster), linetype = "solid", size = 1) +
+  geom_text(data = subset(team_position_topspeed, MF_faster == TRUE), aes(label = ifelse(Pos == "FW", COB, "")), hjust = -0.1, size = 3, fontface = "bold") +
+  scale_x_discrete(name = "Position", labels = c("Defender", "Midfielder", "Forward")) +
+  labs(title = "Median Top Speed by Position",
+       subtitle = "Most teams\' forwards sprint faster than their midfielders, but not all..",
+       y = "km/h"
+  ) +
+  theme(axis.title.x = element_text(size = 13), axis.title.y = element_text(size = 13), legend.position = "none", plot.margin = unit(c(0.5, 2.5, 0.5, 2.5), "cm"))
+```

@@ -1,6 +1,6 @@
 Package: autoharp
 Title: Semi-Automatic Grading of R and Rmd Scripts
-Version: 0.0.13
+Version: 0.2.0
 Authors@R: c(
     person("Vik", "Gopal", email="vik.gopal@nus.edu.sg", role="aut"),
     person("Agrawal", "Naman", email="naman.a@nus.edu.sg", role=c("aut", "cre")),
@@ -18,21 +18,21 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.3
 Imports: magrittr, dplyr, stringr, rlang, tibble, knitr, rmarkdown,
-        shiny, lintr, methods, igraph
+        shiny, lintr, methods, igraph, xfun
 Collate: 'treeharp.R' 'th_getter-length.R' 'as.matrix.R' 'autoharp.R'
         'check_correctness.R' 'check_rmd.R' 'check_runtime.R'
         'count_lints.R' 'env_size.R' 'extracton_section_text.R'
         'forestharp.R' 'forestharp_helpers.R' 'generate_thumbnails.R'
         'join_treeharp.R' 'lang_2_tree.R' 'lang_2_tree_helpers.R'
         'log_summary.R' 'nlp_related.R' 'populate_soln_env.R'
-        'render_one.R' 'reset_path.R' 'run_tuner.R' 'to_BFS.R'
+        'pre_checks.R' 'render_one.R' 'reset_path.R' 'to_BFS.R'
         'tree_kernel.R' 'tree_routines.R' 'utils-pipe.R' 'utils.R'
         'write_html.R' 'zzz.R'
 Suggests: testthat
 SystemRequirements: pandoc (>= 1.14) - http://pandoc.org
 URL: https://singator.github.io/autoharp-docs/
 NeedsCompilation: no
-Packaged: 2025-11-29 12:31:40 UTC; namanagrawal
+Packaged: 2026-02-19 11:04:30 UTC; namanagrawal
 Author: Vik Gopal [aut],
   Agrawal Naman [aut, cre],
   Samuel Seah [aut],
@@ -41,5 +41,6 @@ Author: Vik Gopal [aut],
   Ruofan Liu [ctb],
   National University of Singapore [cph]
 Maintainer: Agrawal Naman <naman.a@nus.edu.sg>
+Depends: R (>= 3.5.0)
 Repository: CRAN
-Date/Publication: 2025-11-30 22:30:43 UTC
+Date/Publication: 2026-02-19 11:30:02 UTC

@@ -44,7 +44,7 @@ generate_thumbnails <- function(out_dir, html_fname, html_title,
   i <- 1
   
   for(fname in h_files){
-    root_fname <- remove_extension(fname)
+    root_fname <- xfun::sans_ext(fname)
     try_out_files <- file.path(out_dir, paste0(root_fname, "_files"))
     
     divsize <- c("small", "imgsmall")

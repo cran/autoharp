@@ -1,0 +1,102 @@
+---
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyr)
+library(tidyverse)
+library(sf)
+library(leaflet)
+```
+
+### data
+```{r data}
+tw <- read.csv("../data/taiwan_dataset.csv")
+```
+
+
+### qn 1
+```{r qn1}
+tw1 <- tw %>%
+  mutate(num_stores,
+         num_stores = ifelse(num_stores >= 6,
+                             "6 or more",
+                             num_stores)) %>%
+  mutate(house_age,
+         house_age = cut_interval(house_age, length = 10, right = FALSE)) %>%
+  group_by(house_age, num_stores) %>%
+  summarise(median_price = median(price)) %>%
+  mutate(black = ifelse(median_price <= 32, 0, 1))
+
+ggplot(tw1) +
+  geom_tile(mapping = aes(x = house_age,
+                          y = factor(num_stores,
+                                     levels = c("6 or more", "5", "4", "3", "2", "1", "0")),
+                          fill = median_price)) +
+  geom_text(data = tw1,
+            mapping = aes(x = house_age,
+                          y = factor(num_stores,
+                                     levels = c("6 or more", "5", "4", "3", "2", "1", "0")),
+                          label = sprintf("%0.2f", round(median_price, digits = 2)),
+                          color = factor(black))) +
+  scale_colour_manual(values = c("black", "white")) +
+  scale_fill_continuous(low = "paleturquoise",
+                      high = "steelblue4") +
+  labs(x = "House age (yrs)", y = "Num. of stores") +
+  scale_x_discrete(position = "top") +
+  guides(color = FALSE) +
+  theme(legend.direction = "horizontal",
+        legend.position = "bottom")
+```
+
+
+### qn 2
+```{r qn2}
+pairwise_median_lm <- function(x, y) {
+  slope <- vector()
+  for (i in 1:(length(x) - 1)) {
+    for (j in (i + 1):length(x)) {
+      if (x[i] != x[j]) {
+        bi <- (y[j] - y[i]) / (x[j] - x[i])
+        slope <- append(slope, bi)
+      }
+    }
+  }
+  bhat <- median(slope)
+  intercept <- vector()
+  for (k in 1:length(x)) {
+    intercept <- append(intercept, (y[k] - (bhat * x[k])))
+  }
+  ahat <- median(intercept)
+  print(c(bhat, ahat)) #vector of len 2, slope and intercept
+}
+
+tw2 <- tw %>% mutate(ldist = log(dist_MRT))
+xvals <- tw2$ldist
+yvals <- tw2$price
+ba <- pairwise_median_lm(xvals, yvals)
+
+ggplot(tw2) +
+  geom_point(mapping = aes(x = ldist,
+                           y = price)) +
+  geom_smooth(mapping = aes(x = ldist,
+                           y = price),
+              method = "lm",
+              se = FALSE) +
+  geom_abline(slope = ba[1], intercept = ba[2], lty = 2, col = "red") +
+  labs(x = "Log of Distance to MRT", y = "Price")
+
+```
+
+
+### qn 3
+```{r qn3}
+tw3 <- tw %>%
+  mutate(euclid = sqrt((Xs - 0.5) ^ 2 + (Ys - 0.5) ^ 2))
+ba2 <- pairwise_median_lm(sqrt(tw3$euclid), tw3$price)
+ggplot(tw3) +
+  geom_point(mapping = aes(x = sqrt(euclid),
+                           y = price)) +
+  geom_abline(slope = ba2[1], intercept = ba2[2], col = "red") +
+  labs(x = "Distance to Center of Town", y = "Price")
+```

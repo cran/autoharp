@@ -113,7 +113,7 @@ subtree_at <- function(obj, at_node, preserve_call=FALSE) {
     }
     rec_id <- get_recursive_index(obj, at_node)
     #browser()
-    t1 <- TreeHarp(th_call[[rec_id + 1]], TRUE)
+    t1 <- TreeHarp(th_call[[rec_id]], TRUE)
     return(t1)
   }
 }
@@ -724,8 +724,8 @@ find_branch_num <- function(th, child_id, ancestor_id) {
 #' ex3 <- quote(x <- f(y = g(3, 4), z=1L))
 #' t1 <- TreeHarp(ex3, TRUE)
 #' rec_index <- get_recursive_index(t1, 6)
-#' ex3[[rec_index + 1]]
-#' ex3[[get_recursive_index(t1, 3)+1]]
+#' ex3[[rec_index]]
+#' ex3[[get_recursive_index(t1, 3)]]
 get_recursive_index <- function(th, node_id) {
   node_types <- get_node_types(th)
   if( is(node_types, "logical") || (!node_types$call_status[node_id])) {
@@ -736,9 +736,30 @@ get_recursive_index <- function(th, node_id) {
   
   fns_to_root <- nodes_to_root[call_status[nodes_to_root]]
   parent_fns_to_root <- sapply(fns_to_root[-1], get_parent_call_id, x=th)
-  branch_nums <- mapply(find_branch_num, child_id = fns_to_root[-1], 
-                        ancestor_id = parent_fns_to_root, 
-                        MoreArgs = list(th=th))
+  # browser()
+  # initialise branch_nums to be empty vector
+  # find branch_num, check if parent is "function"
+  branch_nums <- vector(mode="integer", length = 0)
+  for(nn in 1:length(parent_fns_to_root)){
+    tmp_branch_num <- find_branch_num(th, 
+                                      child_id = fns_to_root[-1][nn],
+                                      ancestor_id = parent_fns_to_root[nn])
+    parent_fn_name <- node_types$name[parent_fns_to_root[nn]]
+    if(parent_fn_name == "function"){
+      # check if node is formal argument or not
+      direct_parent_code_id <- get_parent_id(th, fns_to_root[-1][nn])
+      if(node_types$formal_arg[direct_parent_code_id]){
+        branch_nums <- c(branch_nums, c(2, tmp_branch_num))
+      } else {
+        branch_nums <- c(branch_nums, 3)
+      }
+    } else {
+      branch_nums <- c(branch_nums, tmp_branch_num + 1)
+    }
+  }
+  # branch_nums <- mapply(find_branch_num, child_id = fns_to_root[-1], 
+  #                      ancestor_id = parent_fns_to_root, 
+  #                      MoreArgs = list(th=th))
   branch_nums
   #parent_nodes <- sapply(nodes_to_root[-1], get_parent_call_id, x=th)
   #child_nodes <- lapply(parent_nodes, get_child_ids, x=th)

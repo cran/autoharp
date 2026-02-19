@@ -1,0 +1,158 @@
+---
+title: "Tutorial 7 Worksheet AY 20/21 Sem I"
+subtitle: DSA2101
+output:
+  html_document: default
+  pdf_document: 
+    keep_tex: yes
+    toc: yes
+---
+
+This tutorial works with the four Excel files that contain data about the FIFA 
+2018 world cup.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+```
+
+## Questions
+
+1. Compute the average time between sprints for an outfield player.
+
+```{r echo=FALSE}
+tracking <- read_excel("../data/player_tracking_fifa2018.xlsx") %>% 
+  separate(time_played, sep = "'", into=c("min", "sec")) %>%
+  mutate(min= as.numeric(min), sec=str_replace_all(sec, "[^0-9]", "")) %>% 
+  mutate(sec= as.numeric(sec), time_played = min + sec/60, .after=min)
+player_info <- read_excel("../data/player_info_fifa2018.xlsx")
+```
+
+2. Tidy the data in the pass completion table. The first 10 rows of the final
+data frame `pass_tidy` should look like this:
+```{r echo=FALSE}
+pass_completion <- read_excel("../data/pass_completion_fifa2018.xlsx")
+pass_tidy <- pass_completion %>%
+  pivot_longer(lpass_comp:tpass_att, names_to="pass_info", values_to="count") %>%
+  separate(pass_info, into=c("pass_type", "status"), sep="_") %>%
+  mutate(pass_type= recode(pass_type, 'lpass'='long', 'mpass'='medium',
+                             'spass'='short', 'tpass' = 'total'))
+head(pass_tidy, n=10)
+```
+
+3.  Use the `pass_tidy` to compute, for each country, the proportion of long, 
+short and medium-range passes *attempted*. Let these be $p_1, p_2$ and $p_3$ for 
+a particular country. Now for each country, compute the entropy associated with the 
+type of passes attempted:
+\[
+-\sum_{i=1}^3 p_i \log(p_i)
+\]
+If this is zero, then that country attempted only one type of pass. The larger this 
+value is, the more unpredictable the type of pass the players attempt. 
+
+4. For the defenders from each team, compute the average number of minutes spent 
+in the opposition half.
+
+5. Generate the pass matrix for players who played more than 30 minutes in the
+ESP-POR game (match_id: 300331524). There should be two - one for the Spanish
+players `pass_df_esp` and one for the Portugese players `pass_df_por`. For 
+instance, the top-left of the pass matrix for Spain is:
+
+```{r echo=FALSE}
+tracking_pos <- left_join(tracking, player_info, by=c("jersey" ="Jersey", "team"="Country"))
+pass_matrix <- read_excel("../data/pass_matrix_fifa2018.xlsx") %>%
+  mutate(from_player = as.integer(from_player), to_player=as.integer(to_player),
+         match_id = as.numeric(match_id))
+players_in_game <- filter(tracking_pos, min >= 30, match_id == 300331524)
+
+semi_join(pass_matrix, players_in_game,
+          by=c("from_player" = "jersey", "country" = "team", "match_id"="match_id")) %>%
+  semi_join(players_in_game, by=c("to_player" = "jersey", "country" = "team")) -> both_teams
+pass_df_esp <- both_teams %>% filter(country == "ESP") %>%
+  pivot_wider(id_cols=from_player, names_from=to_player, values_from=pass_count)
+pass_df_por <- both_teams %>% filter(country == "POR") %>%
+  pivot_wider(id_cols=from_player, names_from=to_player, values_from=pass_count)
+pass_df_esp[1:5, 1:5]
+```
+
+6. Add a section beginning with 
+
+`## My FIFA question`
+
+in your Rmd file. Describe a question that you would ask of this data, and go ahead 
+and complete your exploration of it as best you can.
+
+## Requirements:
+
+1. `pass_tidy`: a dataframe or tibble as above.
+2. `pass_df_esp` and `pass_df_por`: dataframes or tibbles as above.
+3. A section with a question of your own of this dataset.
+
+## Dataset descriptions
+
+Any column with a ^ at the end can be used to join with a column in another 
+table.
+
+1. `player_info_fifa2018.xlsx`
+    * `Jersey`: jersey number.^
+    * `Name`: player's name.
+    * `Pos`: position - goalkeeper (GK), defender (DF), midfielder (MF), forward (FW).
+    * `DOB`: date of birth.
+    * `Club`: professional club that the player plays for.
+    * `Country`: country that this player plays for at the world cup.^
+2. `pass_completion_fifa2018.xlsx`
+    * `lpass_comp`: long passes completed.
+    * `lpass_att`: long passes attempted.
+    * `mpass_comp`: medium-range passes completed.
+    * `mpass_att`: medium-range passes attempted.
+    * `spass_comp`: short passes completed.
+    * `spass_att`: short passes attempted.
+    * `tpass_comp`: total passes completed.
+    * `tpass_att`: total passes attempted.
+    * `jersey`: jersey number.^
+    * `country`: country that this player plays for at the world cup.^
+    * `match_id`: A unique match id for each of the 64 matches at the 2018 world cup.^
+3. `pass_matrix_fifa2018.xlsx`
+    * `from_player`: jersey number of player who originates the pass.^
+    * `to_player`: jersey number of player who receives the pass.^
+    * `pass_count`: number of such passes.
+    * `country`: country that these two players play for at the world cup.^
+    * `match_id`: A unique match id for each of the 64 matches at the 2018 world cup.^
+4. `player_tracking_fifa2018.xlsx`
+    * `jersey`: jersey number.^
+    * `time_played`: minutes and seconds played by this player in this game.
+    * `dist_total`: total distance covered by this player (in metres).
+    * `dist_poss`: distance covered while his team was in possession.
+    * `dist_nposs`: distance covered while his team was not in possession.
+    * `time_oh`: time spent in the opposition half.
+    * `time_a3`: time spent in the attacking third of the field.
+    * `time_pa`: time spent in the opponents' penalty area.
+    * `sprints`: number of sprints made by this player.
+    * `top_speed`: top speed attained by this player in this match (km/h).
+    * `z1` - `z5`: percentage of time spent in speed zones (0-7, 7-15, 15-20, 
+       20-25, > 25 km/h).
+    * `player_name`: player name.
+    * `match_id`: A unique match id for each of the 64 matches at the 2018 world cup.^
+    * `team`: country that this player plays for at the world cup.^
+
+
+
+
+
+<!-- # long-ball teams: -->
+<!-- tmp %>% mutate(prop = count/total_count) %>%  -->
+<!--   filter(prop[pass_length == "long"] > 0.28) -->
+
+<!-- tmp %>% mutate(prop = count/total_count) %>%  -->
+<!--   filter(prop[pass_length == "short"] > 0.28) -->
+
+<!-- tmp %>% mutate(prop = count/total_count) %>%  -->
+<!--   filter(country == "GER") -->
+<!-- ``` -->
+
+<!-- ``` -->
+
+<!-- ## Pass matrix for POR ESP -->
+
+
+

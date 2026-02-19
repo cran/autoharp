@@ -1,0 +1,85 @@
+---
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(sf)
+library(leaflet)
+
+data <- read.csv("../data/taiwan_dataset.csv")
+```
+
+## Q1
+```{r Q1}
+qn1 <- data %>%
+  mutate(num_stores = ifelse(num_stores >= 6, 6, num_stores),
+         grp_age = cut(house_age, breaks = seq(0, 50, 10), right = FALSE)) %>%
+  group_by(num_stores, grp_age) %>%
+  mutate(median_price = median(price))
+```
+
+
+```{r}
+x <- log(data$dist_MRT)
+y <- data$price
+
+pairwise_median_lm <- function(x, y) {
+  #get pairwise combination
+  com_x <- combn(x, 2)
+  com_y <- combn(y, 2)
+  
+  # find estimate of slope
+  slope <- sapply(1:ncol(com_x),
+         function(i) {
+           if(com_x[, i][1] != com_x[, i][2]) {
+             (com_y[, i][2] - com_y[, i][1]) / (com_x[, i][2] - com_x[, i][1])
+           }
+         }
+  )
+  b_hat <- median(unlist(slope))
+
+  #find estimate of intercept
+  intercept <- sapply(1:(length(x)), function(i) {y[i] - (b_hat * x[i])})
+  a_hat <- median(intercept)
+  
+  #result
+  res <- c(b_hat, a_hat)
+  res
+}
+
+est <- pairwise_median_lm(x, y)
+
+ggplot(data, aes(x = log(dist_MRT), y = price)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_abline(slope = est[1], intercept = est[2], lty = 2, col = "red") +
+  labs(x = "distance to MRT")
+
+model_coef <- lm(price ~ log(dist_MRT), data)$coefficients
+```
+
+
+## Q3
+```{r Q3}
+data2 <- st_as_sf(data, coords = c("long", "lat"))
+st_crs(data2) <- 4326
+
+map_tw <- leaflet(data2) %>% addTiles() %>%
+  addCircles(weight = 10)
+
+data <- data %>%
+  mutate(dist_center = sqrt((Xs - 0.5)^2 + (Ys - 0.5)^2),
+                        sqrt_dist_center = sqrt(dist_center))
+
+est2 <- pairwise_median_lm(data$sqrt_dist_center, data$price)
+
+ggplot(data, aes(x = sqrt_dist_center, y = price)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_abline(slope = est2[1], intercept = est2[2], lty = 2, col = "red") +
+  labs(x = "distance to centre of town")
+```
+

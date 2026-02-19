@@ -1,0 +1,186 @@
+---
+title: "Assignment 01"
+author: "DSA2101 AY 22/23 Sem I"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r echo=FALSE}
+compute_slopes <- function(x, y){
+  m <- (y[-1]-y[-5])/(x[-1]-x[-5])
+  r_diff <- abs(m[4]-m[3])
+  l_diff <- abs(m[2]-m[1])
+  
+  #if(m[1] == m[2] && m[4] == m[3]){
+  if(m[1] != m[2] || m[4] != m[3]){
+    mid_slope <- (r_diff*m[2] + l_diff*m[3])/(l_diff + r_diff)
+  } else {
+    mid_slope <- (1/2)*(m[2] + m[3])
+  }
+  mid_slope
+}
+
+est_poly <- function(x, y, slopes, n=50) {
+  x_vals <- seq(x[1], x[2], length.out=n)
+  p <- c(y[1],
+         slopes[1], 
+         (3*(y[2]-y[1])/(x[2]-x[1]) - 2*slopes[1] - slopes[2])/(x[2]-x[1]),
+         (slopes[1] + slopes[2] -2*(y[2]-y[1])/(x[2]-x[1]))/(x[2]-x[1])^2)
+  cbind(x_vals, p[1] + p[2]*(x_vals-x[1]) + p[3]*(x_vals-x[1])^2 + p[4]*(x_vals-x[1])^3)
+}
+
+add_points <- function(x, y, above=TRUE){
+  if(above==FALSE){
+    out <- add_points(rev(-x), rev(y), TRUE)
+    return(cbind(rev(-out[,1]), rev(out[,2])))
+  }
+  m <- (y[-1] - y[-3])/(x[-1] - x[-3])
+  x4 <- x[3] - x[1] + x[2]
+  x5 <- 2*x[3] - x[1]
+  
+  m3 <- 2*m[2] - m[1]
+  y4 <- y[3] + (2*m[2] - m[1])*(x4 - x[3])
+  y5 <- y4 + (2*m3 - m[2])*(x5 - x4)
+  cbind(c(x, x4, x5), c(y, y4, y5))
+}
+```
+
+# Dataset
+
+The data you need for this assignment is in the `assignment01.rds` file in 
+your folder on Canvas.
+
+# Akima interpolation
+
+Akima interpolation is a technique for interpolating between two points. It is 
+widely used, even today. The interpolation is done by fitting a cubic polynomial 
+between the two points.
+
+There are two steps involved in estimating the polynomial between two points:
+
+1. The slopes at each of the two points have to be estimated. At each point, this 
+   is carried out using the nearest two points on each side.
+2. The slopes are then used to fit the cubic polynomial between $(x_1, y_1)$ and 
+   $(x_2, y_2)$.
+
+## Example 
+
+Suppose we wish to interpolate these seven points:
+```{r echo=FALSE, fig.align='center', out.width='50%'}
+set.seed(11)
+x <- sort(sample(1:10, size=7), decreasing = FALSE)
+y <- sort(rnorm(7), decreasing = FALSE)
+plot(x, y, ylim=c(-2,2), pch=20, cex=1.8, col="orangered3",
+     main="Points to be interpolated")
+```
+
+Here is what the estimated slopes for the middle points look like. The algorithm
+can be modified to interpolate the extreme two points as well, but we will leave it
+out for this assignment.
+
+```{r echo=FALSE, fig.align='center', out.width='50%'}
+sl <- vapply(1:3, function(w) compute_slopes(x[w:(w+4)], y[w:(w+4)]), 1.2)
+plot(x, y, ylim=c(-2,2), pch=20, cex=1.8, col="orangered3",
+     main="Estimated slopes")
+segments(x[3:5]-0.2, y[3:5]-sl*0.2, x[3:5]+0.2, y[3:5]+sl*0.2)
+```
+
+Finally, we use the estimated slopes and the observed coordinates to fit a 
+separate cubic polynomial between each pair of adjacent points.
+
+```{r echo=FALSE, fig.align='center', out.width='50%'}
+plot(x, y, ylim=c(-2,2), pch=20, cex=1.8, col="orangered3",
+     main="Estimated slopes")
+segments(x[3:5]-0.2, y[3:5]-sl*0.2, x[3:5]+0.2, y[3:5]+sl*0.2)
+lines(est_poly(x[3:4], y[3:4], slopes=sl[1:2]), col="blue")
+lines(est_poly(x[4:5], y[4:5], slopes=sl[2:3]), col="blue")
+```
+
+## Question 1
+
+Write a function `compute_slopes` that takes in two vectors of length 5, `x` and
+`y`, and returns the estimated slope at `x[3]`. Here is the algorithm for it:
+
+1. We are given $(x_1, y_1), (x_2,y_2),\ldots,(x_5,y_5)$ where 
+   $x_1 < x_2 < \ldots < x_5$. Our goal is to estimate the slope of the
+   interpolated function at $x_3$.
+2. Compute the gradients of the 4 linear interpolations between the points. For 
+   instance, 
+   \[
+   m_1 = \frac{y_2 - y_1}{x_2 - x_1}, \;  m_2 = \frac{y_3 - y_2}{x_3 - x_2}, \;
+   \text{and so on}
+   \]
+3. The slope at $x_3$ is computed to be:
+   \[ 
+   s = \frac{|m_4 - m_3|m_2 + |m_2 - m_1|m_3}{|m_4 - m_3| + |m_2 - m_1|}
+   \]
+4. In the rare situation that $m_1=m_2$ **and** $m_3=m_4$, we set 
+   \[ 
+   s = \frac{1}{2}(m_2 + m_3)
+   \]
+Here is a check of how it should work:
+```{r}
+x_eg <- -2:2
+y_eg <- x_eg^2
+compute_slopes(x_eg,y_eg)
+```
+
+## Question 2
+
+Write a function `est_poly` that will return a set of interpolated coordinates 
+between two points $(x_1, y_1)$ and $(x_2, y_2)$. The arguments to this function
+should be:
+
+1. `x`: a vector containing $x_1$ and $x_2$
+2. `y`: a vector containing $y_1$ and $y_2$
+3. `slopes`: A vector containing estimated slopes at $(x_1, y_1)$ and $(x_2, y_2)$ 
+             (using `compute_slopes()`).
+4. `n`: The number of interpolated points to return. The return value should 
+    be a matrix with two columns.
+
+The task is: given $(x_1, y_1)$ and $(x_2, y_2)$, and that the estimated
+gradients at the two points are $s_1$ and $s_2$, we wish to estimate a cubic
+polynomial that passes through the two points, and has derivatives $s_1$ and
+$s_2$ at the two points.
+
+Here is the algorithm to implement:
+
+1. The form of the polynomial will be
+\[ 
+y = p_0 + p_1(x - x_1) + p_2(x- x_1)^2 + p_3(x - x_1)^3
+\]
+2. The solutions for the coefficients are:
+   * $p_0 = y_1$
+   * $p_1 = s_1$
+   * $p_2 = [3(y_2-y_1)/(x_2-x_1) - 2s_1 - s_2]/(x_2-x_1)$
+   * $p_3 = [s_1 + s_2 - 2(y_2-y_1)/(x_2-x_1)]/(x_2-x_1)^2$
+   
+Here is an example of how it should work:
+```{r}
+x_eg2 <- c(0, 1)
+y_eg2 <- c(0, 1)
+slopes_eg <- c(0, 2)
+est_poly(x_eg2, y_eg2, slopes_eg, n=5)
+```
+
+## Question 3
+
+Use the two functions you have written to interpolate and plot the points in
+`akima_data`.
+
+# Requirements:
+
+1. Your Rmd file must knit on our machines. It should create a html with a properly 
+   labelled plot.
+2. Avoid "for" loops as much as possible. 
+3. Use vectorised operations in R.
+4. If we run all the chunks in your Rmd file, we should obtain:
+    * functions named `est_poly()` and `compute_slopes`
+    * `akima_data` with no missing values.
+
+# References
+
+1. A new method of interpolation and smooth curve fitting based on 
+   local procedures (1970), H Akima, 
+   *J. of the Association for Computing Machinery*.

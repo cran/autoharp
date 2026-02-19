@@ -1,0 +1,60 @@
+---
+title: "Student 02 Testing"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem 1: Basic Calculations
+
+Students should compute the mean and standard deviation of a vector.
+
+```{r solution_objects}
+# Solution objects that students should create
+X <- 1:28
+Y <- c(5, 10, 15, 20, 25)
+Z <- rnorm(100, mean = 10, sd = 3)
+```
+
+## Problem 2: Custom Function
+
+Students should create a function that computes the square of a number.
+
+```{r solution_function}
+# Solution function
+square_number <- function(n) {
+  return(n*n + 2)
+}
+
+# Expected result
+expected_result <- square_number(5)
+```
+
+
+## Problem 3: Data Manipulation
+
+Students should filter a data frame.
+
+```{r solution_data}
+# Solution data manipulation
+original_df <- data.frame(
+  name = c("Alice", "Bob", "Charlie", "Diana"),
+  age = c(25, 30, 35, 28),
+  score = c(85, 92, 78, 95)
+)
+
+filtered_df <- original_df[original_df$score > 80, ]
+
+
+
+library(tidyverse)
+
+ggplot(filtered_df) +
+  geom_point(aes(x = score, y = age)) +
+  theme_minimal()
+```
+
+
+

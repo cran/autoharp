@@ -1,0 +1,99 @@
+---
+output: html_document
+---
+
+```{r setup}
+library(readxl)
+player_info <- read_excel("../data/player_info_fifa2018.xlsx")
+player_tracking <- read_excel("../data/player_tracking_fifa2018.xlsx")
+match_schedule <- read_excel("../data/match_schedule.xlsx")
+```
+
+# Question 1
+```{r}
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(tidyr)
+
+new_tracking <- player_tracking %>%
+  mutate(minutes = as.numeric(str_extract(time_played, "^[^']*")),
+         seconds = as.numeric(str_sub(time_played, -3, -2))) %>%
+  filter(minutes >= 30) %>%
+  rename(Jersey = jersey) %>%
+  left_join(player_info, by = "Jersey") %>%
+  filter(team == Country, Pos != "GK") %>%
+  group_by(team, Pos) %>%
+  summarise(median = median(top_speed), .groups = "keep") %>%
+  pivot_wider(names_from = Pos, values_from = median) %>%
+  mutate(MF_faster = ifelse(FW > MF, FALSE, TRUE)) %>%
+  pivot_longer(DF:MF, names_to = "Pos", values_to = "median") %>%
+  mutate(Pos = factor(Pos, levels = c("DF", "MF", "FW"))) %>%
+  mutate(Pos = recode(Pos,
+         "DF" = "Defender",
+         "MF" = "Midfielder",
+         "FW" = "Forward"))
+
+true <- new_tracking %>%
+  filter(MF_faster == TRUE, Pos == "Forward")
+
+```
+
+# Question 2
+```{r}
+# group stages
+group_matches <- player_tracking %>%
+  rename(Jersey = jersey) %>%
+  left_join(player_info, by = "Jersey") %>%
+  filter(team == Country, Pos == "DF") %>%
+  mutate(match_id = as.character(match_id)) %>%
+  right_join(match_schedule, by = "match_id") %>%
+  filter(match_info %in% c("Group A", "Group B", "Group C", "Group D", "Group E", "Group F", "Group G", "Group H")) %>%
+  mutate(minutes = as.numeric(str_extract(time_played, "^[^']*")),
+         seconds = as.numeric(str_sub(time_played, -3, -2))) %>%
+  # remove NA timing; negligible
+  filter(!is.na(time_oh)) %>%
+  select(time_played, time_oh, Country, minutes, seconds) %>%
+  mutate(time_percentage = as.numeric(str_extract(time_oh, "[^%]+"))) %>%
+  mutate(total_mins = minutes + seconds / 60) %>%
+  mutate(time_in_oh = total_mins * time_percentage / 100) %>%
+  group_by(Country) %>%
+  summarise(avg_in_oh = mean(time_in_oh), .groups = "keep")
+
+# knock out stages
+knock_out_matches <- player_tracking %>%
+  rename(Jersey = jersey) %>%
+  left_join(player_info, by = "Jersey") %>%
+  filter(team == Country, Pos == "DF") %>%
+  mutate(match_id = as.character(match_id)) %>%
+  right_join(match_schedule, by = "match_id") %>%
+  filter(match_info %in% c("Round of 16", "Quarter-finals", "Semi-finals", "Play-off for third place", "Final")) %>%
+  mutate(minutes = as.numeric(str_extract(time_played, "^[^']*")),
+         seconds = as.numeric(str_sub(time_played, -3, -2))) %>%
+  # remove NA timing; negligible
+  filter(!is.na(time_oh)) %>%
+  select(time_played, time_oh, Country, minutes, seconds) %>%
+  mutate(time_percentage = as.numeric(str_extract(time_oh, "[^%]+"))) %>%
+  mutate(total_mins = minutes + seconds / 60) %>%
+  mutate(time_in_oh = total_mins * time_percentage / 100) %>%
+  group_by(Country) %>%
+  summarise(avg_in_oh_knockout = mean(time_in_oh), .groups = "keep")
+
+data <- left_join(group_matches, knock_out_matches, by = "Country") %>%
+  # filter out teams that did not play in knockout matches, for fair comparison
+  filter(!is.na(avg_in_oh_knockout)) %>%
+  pivot_longer(avg_in_oh:avg_in_oh_knockout, names_to = "MatchType", values_to = "average") %>%
+  mutate(MatchType = recode(MatchType,
+                            "avg_in_oh" = "Group_Matches",
+                            "avg_in_oh_knockout" = "KnockOut_Matches")) %>%
+  mutate(Variance = var(average))
+
+data$Country <- factor(data$Country, levels = unique(data$Country[order(data$Variance)]))
+
+ggplot(data, aes(x = Country, y = average,
+                 color = MatchType)) +
+  geom_point() +
+  labs(title = "Average Time Spent by Defenders in Opp. Half in Group VS Knock-out Matches",
+       subtitle = "Teams sorted by variance of time spent in each match type",
+       x = "Country", y = "Average Time Spent")
+```

@@ -1,0 +1,62 @@
+---
+output: html_document
+---
+# Question 1
+```{r}
+library(stringr)
+den_clusters <- readRDS("../data/dengue_cluster_2014-09-09.rds")
+class(den_clusters) <- "clusters"
+
+poly_area <- function(xy_mat) {
+  require(sp)
+  tmp_p <- Polygons(list(Polygon(xy_mat)), "id")
+  tmp_p@area
+}
+
+as.data.frame.clusters <- function(x){
+  useful <- x[[1]][-1]
+  descr <- sapply(useful, function(x) x[[4]])
+  num_cases <- sapply(useful, function(x) x[[2]])
+  coor_list <- sapply(useful, function(x) toM(x[[7]]))
+  area <- sapply(coor_list, poly_area)/1000000
+  tmp <- data.frame(descr, num_cases, area)
+  tmp
+}
+summary.clusters <- function(x) {
+  str1 <- "Cluster Summary:\n"
+  cat(str1)
+  str2 <- "----------------\n"
+  cat(str2)
+}
+```
+
+#Question 2
+```{r}
+require("rvest")
+
+front_page <- read_html("https://www.r-bloggers.com/2017/05/")
+
+titles <- NULL
+dates <- NULL
+
+for(ii in 1:10) {
+  page_url <- paste0("https://www.r-bloggers.com/2017/05/page/", ii, "/")
+  read_page <- tryCatch(read_html(page_url),
+                        error = function(e) return(NULL))
+  if(is.null(read_page)) {
+    cat(paste0("Page ", ii, " failed. Skipping it.\n"))
+    next
+  }
+  title_nodes <- html_elements(read_page, ".loop-title a")
+  titles <- c(titles, html_text(title_nodes))
+  
+  date_nodes <- html_elements(read_page, ".meta")
+  dates <- c(dates, str_trim(str_split_i(html_text(date_nodes), "\\|", 1)))
+  cat("Done with page ", ii, "..\n")
+}
+
+titles_df <- data.frame(titles= titles, dates= dates, stringsAsFactors = FALSE)
+
+```
+
+

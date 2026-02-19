@@ -1,3 +1,24 @@
+v0.20:
+- render_prechecks updated to only look for system and system2
+- rmd_to_forestharp always returns a list of length 2.
+  - uses purl to detect chunks better
+  - lintr lines matched with purl lines one at a time
+- subtree_at() more robust by improving get_recursive_index()
+- extract_actual_args allows ignoring of assigned obj.
+- added forestharp helpers to count for loop, detect possible improvements with
+  pipe or apply
+
+v0.1.1:
+- replaced remove_extension with xfun::sans_ext()
+- added pre-checks (for view() and for system()) for render_one
+- extract_chunks() fixed to handle situations where verbatim chunks present in rmd file.
+- bug in count_fn_call fixed: when magrittr pipe used, it classifies the piped 
+  object as not-a-call.
+
+v0.1.0:
+- tuner shiny application moved to inst/shiny
+- works with shinymanager for password protection
+
 v0.0.13:
 - removed dependency on pryr
 - updated to work with new version of lintr

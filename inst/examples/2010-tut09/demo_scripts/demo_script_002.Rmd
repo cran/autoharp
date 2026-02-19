@@ -1,0 +1,41 @@
+---
+output: html_document
+---
+```{r}
+library(ggplot2)
+library(dplyr)
+library(classInt)
+```
+
+## Qn 1
+```{r}
+taiwan <- read.csv("../data/taiwan_dataset.csv")
+twds <- select(taiwan, house_age, num_stores, price)
+age_brks <- classIntervals(twds$house_age, n =  5, style = "fixed", fixedBreaks = c(0, 10, 20, 30, 40, 50))
+age_lbls <- paste("[", paste(round(age_brks$brks[-6]),
+                         round(age_brks$brks[-1]),
+                         sep = ", "), ")", sep = "")
+twds <- mutate(twds, age_cat = factor(findCols(age_brks), labels = age_lbls)) %>%
+  mutate(num_stores = recode(num_stores, `10` = as.integer(6), `9` = as.integer(6), `8` = as.integer(6), `7` = as.integer(6))) %>%
+  group_by(age_cat, num_stores) %>%
+  summarise("med_price" = median(price), .groups = "keep")
+
+ggplot(twds) +
+  geom_tile(aes(age_cat, num_stores, fill = med_price)) +
+  scale_x_discrete(position = "top") +
+  scale_y_continuous(trans = "reverse", breaks = 0:6, labels = c(0:5, "6" = "6 or more")) +
+  labs(y = "Num. of stores", x = "House age (yrs)", fill = "Median house price") +
+  theme(legend.position = "bottom") +
+  geom_text(data = twds, aes(age_cat, num_stores, label = med_price, color = med_price > 35), show.legend = FALSE) +
+  scale_color_manual(values = c("black", "white")) +
+  scale_fill_gradient(high = "#132B43", low = "#56B1F7")
+```
+
+## Qn 2
+```{r}
+ggplot(taiwan) +
+  geom_point(aes(dist_MRT, price)) +
+  scale_x_log10()
+
+```
+

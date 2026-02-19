@@ -1,0 +1,62 @@
+---
+title: "Tutorial 7"
+output: html_document
+---
+```{r}
+library(tidyverse)
+library(readxl)
+
+player_info <- read_excel("../data/player_info_fifa2018.xlsx") %>%
+  select(Jersey, Pos, Country)
+
+player_tracking <- read_excel("../data/player_tracking_fifa2018.xlsx") %>%
+  mutate(min_played = as.numeric(str_extract(time_played, "[0-9]+")) + as.numeric(str_extract(time_played, "(?<=\')(.*?)(?=\")")) / 60) %>%
+  replace_na(list(time_oh = "0%")) %>%
+  mutate(min_oh = min_played * as.numeric(str_extract(time_oh, "[0-9]+")) / 100) %>%
+  left_join(player_info, by = c("jersey" = "Jersey", "team" = "Country")) %>%
+  select(-time_played)
+
+outfield_sprint_avg <- player_tracking %>% filter(Pos != "GK", !is.na(sprints)) %>% summarise(sprint_avg = mean(min_played / sprints))
+
+pass_excel <- read_excel("../data/pass_completion_fifa2018.xlsx")
+pass_tidy <- pivot_longer(pass_excel,
+                          cols = lpass_comp:tpass_att,
+                          names_to = c("pass_type", "status"),
+                          names_pattern = "(.)pass_(.*)",
+                          values_to = "count") %>%
+  mutate(pass_type = recode(pass_type,
+                            `l` = "long",
+                            `m` = "medium",
+                            `s` = "short",
+                            `t` = "total"))
+
+pass_proportion <- pass_tidy %>%
+  filter(status == "att") %>%
+  group_by(country, pass_type) %>%
+  summarise(num_pass = sum(count), .groups = "drop") %>%
+  pivot_wider(names_from = pass_type, values_from = num_pass) %>%
+  mutate(total2 = long + medium + short) %>%
+  mutate(long = long / total2, medium = medium / total2, short = short / total2) %>%
+  mutate(pass_entropy = -1 * ((long * log(long)) + (medium * log(medium)) + (short * log(short)))) %>%
+  select(-(total:total2))
+
+defender_tracking <- player_tracking %>%
+  filter(Pos == "DF")
+
+defender_avg <- defender_tracking %>%
+  group_by(jersey, player_name, team) %>%
+  summarise(oh_mean = mean(min_oh), .groups = "drop")
+
+pass_mat_match <- read_excel("../data/pass_matrix_fifa2018.xlsx") %>%
+  filter(match_id == 300331524)
+
+pass_df_esp <- pass_mat_match %>%
+  filter(country == "ESP") %>%
+  select(from_player : pass_count) %>%
+  pivot_wider(names_from = to_player, values_from = pass_count)
+
+pass_df_por <- pass_mat_match %>%
+  filter(country == "POR") %>%
+  select(from_player : pass_count) %>%
+  pivot_wider(names_from = to_player, values_from = pass_count)
+```

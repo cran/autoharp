@@ -1,0 +1,48 @@
+---
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(classInt)
+```
+
+```{r data}
+data <- read_csv("../data/taiwan_dataset.csv")
+```
+
+### Question 2
+```{r q2}
+data <- data %>%
+  mutate(ldist = log(dist_MRT))
+ggplot(data) +
+  geom_point(aes(dist_MRT, price))
+ggplot(data) +
+  geom_point(aes(dist_MRT, price)) +
+  scale_x_continuous(trans = "log") +
+  labs(title = "Graph of Distance from MRT (in log scale) against Price")
+
+
+pairwise_median_lm <- function(x, y) {
+  x1 <- combn(x, 2)
+  y1 <- combn(y, 2)
+  x1 <- apply(x1, MARGIN = 2, function(x) {x[1] - x[2]})
+  y1 <- apply(y1, MARGIN = 2, function(x) {x[1] - x[2]})
+  slope <- y1 / x1
+  slope <- median(slope, na.rm = TRUE)
+  df <- data.frame(x = x, y = y)
+  df <- mutate(df, a = y - slope * x)
+  a <- median(df$a)
+  c(slope, a)
+}
+pairwise <- pairwise_median_lm(log(data$dist_MRT), data$price)
+summary(lm(price ~ ldist, data = data))
+pairwise
+data %>%
+  ggplot(aes(ldist, price)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = 'blue') +
+  geom_abline(slope = pairwise[1], intercept = pairwise[2], lty = 2, color = 'red') +
+  labs(x = "Log distance to MRT")
+
+```

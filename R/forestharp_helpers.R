@@ -98,6 +98,38 @@ count_lam_fn <- function(th) {
 count_fn_call <- function(th, pattern, pkg_name) {
   #adj_list <- get_adj_list(th)
   node_types <- get_node_types(th)
+  
+  # modify node_types for presence of magrittr pipe operator
+  # check for "%<%" or "%>%"
+  # For "%<%", 
+  # - extract left hand node
+  # - if no children, this must be a call; change call status to TRUE
+  # For "%>%", 
+  # - extract right hand node
+  # - if no children, this must be a call; change call status to TRUE
+  # Without this block, count_fn_call() misses out "View" on 
+  # expressions such as x %>% View.
+  pipe_matches <- match(node_types$name, c("%<%", "%>%"))
+  pipe_ids <- which(!is.na(pipe_matches))
+  if(length(pipe_ids) > 0){
+    for(ii in pipe_ids) {
+      if(node_types$name[ii] == "%<%"){
+        left_child_id <- get_child_ids(th, ii)[1]
+        children_of_left <- get_child_ids(th, left_child_id)
+        if(is.null(children_of_left)) {
+          node_types$call_status[left_child_id] <- TRUE
+        }
+      } else {
+        # "%>%"
+        right_child_id <- get_child_ids(th, ii)[2]
+        children_of_right <- get_child_ids(th, right_child_id)
+        if(is.null(children_of_right)) {
+          node_types$call_status[right_child_id] <- TRUE
+        }
+      }
+    }
+  }
+  
   if(!missing(pattern) && !missing(pkg_name)){
     stop("Only one of pattern or pkg_name should be supplied.")
   }
@@ -210,15 +242,66 @@ extract_assigned_objects <- function(th) {
 #' to return the actual arguments for a specified function so that something
 #' similar to \code{extract_assigned_objects} could be returned.
 #'
+#' @param include_assigned_obj A Boolean flag. If TRUE (default), it also returns
+#' the name of the assigned object. If FALSE, it drops the name of the assigned 
+#' object. The FALSE flag is useful for when checking if the we wish to match the 
+#' assigned object from a previous call with the actual argument in this call.
+#'
 #' @export
-extract_actual_args <- function(th) {
+extract_actual_args <- function(th, include_assigned_obj=TRUE) {
   node_types <- get_node_types(th)
-
+  
+  if(!include_assigned_obj) {
+    # browser()
+    all_assign_rows <- dplyr::filter(node_types, .data$name %in% c("<-", "="))
+    if(NROW(all_assign_rows) > 0){
+      top_assign_id <- min(all_assign_rows$id)
+      child_ids <- get_child_ids(th, top_assign_id)
+      if(!node_types$call_status[child_ids[2]]) {
+        return(node_types$name[child_ids[2]])
+      }
+      th_sub <- subtree_at(th, child_ids[2], TRUE)
+      node_types <- get_node_types(th_sub)
+    }
+    
+  }
+  
   actual_arg_rows <- dplyr::filter(node_types, !.data$call_status,
                                    !.data$formal_arg)
   if(nrow(actual_arg_rows) == 0)
     return(0L)
   actual_arg_rows$name
+}
+
+#' @describeIn forestharp-helpers Counts number of lines in a for loop
+#'
+#' Extracts the actual arguments from an expression, not the formal
+#' First, this function checks if the expression contains a for loop. 
+#' If it does, the innermost \code{for} loop is identified. Finally, the 
+#' number of expressions below it is counted and returned.
+#'
+#' @export
+count_num_lines_for_loop <- function(th) {
+  if(count_fn_call(th, "^for$") == 0){
+    return(0)
+  }
+  
+  node_types <- get_node_types(th)
+  
+  # extract id of innermost "for" loop, and the children of it
+  innermost_for_id <- max(which(node_types$name == "for"))
+  for_children <- get_child_ids(th, innermost_for_id)
+  
+  # Get the third child
+  th_sub <- subtree_at(th, for_children[3], TRUE)
+  
+  node_types_sub <- get_node_types(th_sub)
+  if(node_types_sub$name[1] == "{"){
+    return(length(get_child_ids(th_sub, 1)))
+  } else {
+    return(1)
+  }
+  
 }
 
 

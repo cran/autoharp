@@ -36,10 +36,15 @@ test_that("Keep branches", {
 tt3 <- TreeHarp(quote(f1 <- function(a = 4L) {x <- a; 2 -> y; z = 3; y}), 
                 TRUE)
 tt4 <- TreeHarp(quote(x$g[[34]] <- rnorm(10, mean = g(5, h(34)), sd = 3.4)), TRUE)
+ex6 <- quote(function(y, x = g(z)) w <- 1)
+tt5 <- TreeHarp(ex6, TRUE)
 test_that("Helpers work", {
   expect_setequal(extract_assigned_objects(tt3), c("f1", "x", "y", "z"))
-  expect_equal(get_recursive_index(tt4, 14), c(2,2,2))
-  expect_equal(get_recursive_index(tt4, 4), c(1,1))
+  expect_equal(get_recursive_index(tt3, 7), c(3,3,2))
+  expect_equal(get_recursive_index(tt3, 9), c(3,3,4))
+  expect_equal(get_recursive_index(tt5, 5), c(2,2))
+  expect_equal(get_recursive_index(tt4, 14), c(3,3,3))
+  expect_equal(get_recursive_index(tt4, 4), c(2,2))
   expect_equal(get_parent_call_id(tt4, 11), 3)
   expect_equal(get_parent_call_id(tt4, 12), 3)
 })

@@ -1,0 +1,94 @@
+---
+title: "Tutorial 2 Worksheet AY 20/21 Sem I"
+subtitle: DSA2101
+output:
+  pdf_document:
+  html_document: default
+---
+
+# Question 1
+
+The object `kjv_ind_tokens.rds` contains the individual tokens from the file 
+that we worked on during Tutorial 1. In this question, the task is to re-create 
+the following plot as accurately as you can.
+
+```{r fig.align='center', echo=FALSE}
+library(stringr)
+
+ind_tokens <- readRDS("../data/kjv_ind_tokens.rds")
+
+#bib_characters <- c("Ephraim", "Joseph", "God")
+bib_characters <- c("Cain", "Joseph", "God")
+xpos_chars <- lapply(bib_characters, function(x) which(ind_tokens == x))
+ypos <- mapply( function(x,y) rep(x, length(y)), x=c(2,3,4), y=xpos_chars)
+
+plot(1:length(ind_tokens), y=rep(0, length(ind_tokens)), type="n",
+     yaxt='n', ylim=c(1, 5), xlab="Token position", ylab="", 
+     main="When Characters Are Mentioned in KJV")
+nn <- mapply(points, x=xpos_chars, y=ypos, MoreArgs=list(pch="|", col="red"))
+axis(side=2, at=c(2,3,4), labels=bib_characters, las=1)
+```
+
+The plot above used a vertical line to indicate the positions at which a
+particular character was mentioned in the text. For instance, `God` was
+mentioned throughout the file, while `Cain` was only mentioned for a short
+period at the beginning of the text. `Joseph`, on the other hand, was introduced
+only in the second half of the text.
+
+# Question 2
+
+1. The file `wine.txt` contains wine reviews from a website. Read the data into
+R, and perform what data cleaning steps you think might be appropriate. Describe 
+the steps you took here (not in code comments).
+
+2. Perform the following pre-processing steps on each review in this order:
+
+    1. Replace all punctuation characters with the empty string "".
+    2. Convert all reviews to lower-case.
+    3. Split each review by the whitespace character. You should now have a list 
+    of character vectors.
+    4. Remove all tokens with 3 or less alphabets in them. This removes words 
+    such as `the`, `a`, `to`, etc. from your list.
+    
+Store your final list as `wine_review_list`
+
+3. The Jaccard index is a commonly used measure of similarity between sets of 
+items. Here is how it is computed for two sets $A$ and $B$:
+
+    1. Find the unique set of items in $A$. Let us call this $A_u$.
+    1. Find the unique set of items in $B$. Let us call this $B_u$.
+    2. Compute the number of items in the intersection: $|A_u \cap B_u|$.
+    2. Compute the number of items in the union: $|A_u \cup B_u|$.
+    3. Compute the index: $$ j = \frac{|A_u \cap B_u|}{|A_u \cup B_u|} $$
+
+The Jaccard index takes on values between 0 and 1. A value of 1 indicates 
+that two sets are identical, and a value of 0 means that sets $A$ and $B$ are 
+disjoint. Write function `jacc_ind` that takes in two arguments (two character 
+vectors) and returns the Jaccard index measure.
+
+4. Apply this function to all pairwise combinations of wine reviews. Which 
+pairs are identical? What do they contain? What would you do with them?
+
+# Requirements
+
+Your code must be in an Rmd file, and must generate the following objects:
+
+1. `wine_review_list`: a list of character vectors.
+2. `jacc_ind`: a function taking in two arguments, returning a numerical value between 
+0 and 1.
+
+# Comments
+
+The things that this tutorial focus on are:
+
+* base R plotting
+* use of the apply function
+* inspecting your data closely
+* understanding metrics when you use them.
+
+The tutorial may not take long to come up with working code. After you have done 
+so, go back and review your own code. Think about how it can be improved by
+
+* using the apply paradigm in R
+* reducing duplication in your code
+* improving the plot.

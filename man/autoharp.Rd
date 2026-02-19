@@ -14,7 +14,6 @@ R script/Rmd submissions from students.
 \enumerate{
   \item \code{\link{populate_soln_env}}
   \item \code{\link{render_one}}
-  \item \code{\link{run_tuner}}
   \item \code{\link{TreeHarp}}
 }
 

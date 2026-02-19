@@ -1,0 +1,115 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+# Dengue Clusters and Cases
+
+  * Creating DataFrame Function
+
+```{r}
+den_clusters <- readRDS("../data/dengue_cluster_2014-09-09.rds")
+class(den_clusters) <- "clusters"
+
+library(sp)
+library(stringr)
+
+options(digits=15)
+generate_matrix <- function(xy_char) {
+  tmp1 <- str_split(xy_char, "[\\|\\,]")
+  tmp2 <- as.numeric(str_trim(tmp1[[1]]))
+  return (matrix(tmp2, ncol = 2, byrow = TRUE))
+}
+
+poly_area <- function(xy_mat) { 
+  require(sp) 
+  tmp_p <- Polygons(list(Polygon(xy_mat)), "id")
+  tmp_p@area 
+}
+
+as.data.frame.clusters <- function(x) {
+  dfClusters = matrix(ncol = 3, nrow = as.numeric(den_clusters[[1]][[1]]))
+  colnames(dfClusters) <- c("descr", "num_cases", "area")
+  for (i in 2:(as.numeric(den_clusters[[1]][[1]])+1)) {
+    dfClusters[i-1, 1] = den_clusters[[1]][[i]][[4]]
+    dfClusters[i-1, 2] = den_clusters[[1]][[i]][[2]]
+    matrix <- generate_matrix(den_clusters[[1]][[i]][[7]])
+    area <- poly_area(matrix)
+    area <- round(area/1000000, 8)
+    dfClusters[i-1, 3] =  area
+  }
+  as.data.frame(dfClusters, stringsAsFactors = FALSE)
+}
+```
+
+```{r, eval = FALSE}
+as.data.frame.clusters(den_clusters)
+```
+
+  * Creating Summary Function
+
+```{r}
+summary.clusters <- function(x) {
+  df <- as.data.frame.clusters(den_clusters)
+  cat("Cluster Summary: \n")
+  cat("----------------\n")
+  cat(paste("No. of clusters: ", nrow(df), "\n"))
+  cat(paste("No. of cases: ", sum(as.numeric(df$num_cases)), "\n"))
+  cat(paste("Total area: ", round(sum(as.numeric(df$area)),2), "km2", "\n"))
+}
+```
+
+```{r, eval = TRUE}
+summary.clusters(den_clusters)
+```
+
+# R Bloggers Website
+
+```{r}
+library(rvest)
+page <- "https://www.r-bloggers.com"
+
+downloadTitles <- function(month, year) { #take in strings with month format 2 digit year 4 digit
+  page1 <- paste0(page, "/", year, "/", month, "/")
+  css_node <- ".page-numbers"
+  last_page <- read_html(page1)
+  last_page_number <- max(as.numeric(html_text(html_elements(last_page, 
+                                                              ".page-numbers"))),
+                          na.rm = TRUE)
+  collection <- matrix(ncol = 2)
+  colnames(collection) <- c("titles", "dates")
+  for (i in 1:last_page_number) {
+    currpage <- paste0(page1, "page/", i, "/")
+    titleNode <- "#leftcontent h2"
+    dateNode <- "#leftcontent .date"
+    curr_page <- tryCatch(read_html(currpage), error = function(e) return(NULL))
+    if (is.null(curr_page)) {
+      cat(paste0("Page ", i, " failed. Skipping it. \n"))
+    } else {
+      cat(paste0("Page ", i, " downloaded. \n"))
+      title_node <- html_elements(curr_page, ".loop-title a")
+      date_node <- html_elements(curr_page, ".meta")
+      curr_titles <- html_text(title_node)
+      curr_dates <- html_text(date_node)
+      collection <- rbind(collection, cbind(curr_titles, curr_dates))
+    }
+     
+  }
+  collection = as.data.frame(collection, stringsAsFactors = FALSE)
+  new = na.omit(collection)
+  new
+}
+
+```
+
+```{r}
+
+titles_df <- downloadTitles("05", "2017")
+head(unique(titles_df))
+
+```
+
+
+
