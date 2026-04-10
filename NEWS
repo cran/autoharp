@@ -1,4 +1,15 @@
-v0.20:
+v0.3.1:
+- added 5 vignettes
+
+v0.3.0:
+- moved grading app to inst/shiny folder
+
+v0.2.1:
+- added fix to wrap_chunks to work with qmd test chunks correctly
+- reduced package size by using bzip2 compression for retail_clean.rds
+- grading up path usage and plot presenation fixed.
+
+v0.2.0:
 - render_prechecks updated to only look for system and system2
 - rmd_to_forestharp always returns a list of length 2.
   - uses purl to detect chunks better

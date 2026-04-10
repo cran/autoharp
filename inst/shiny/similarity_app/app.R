@@ -149,6 +149,20 @@ ui <- fluidPage(
         
         div(class = "divider"),
         
+        h5(icon("microchip"), " Performance"),
+        numericInput(
+          inputId = "n_cores",
+          label = "Number of Cores:",
+          value = 1,
+          min = 1,
+          max = max(1L, parallel::detectCores(logical = FALSE), na.rm = TRUE),
+          step = 1,
+          width = "100%"
+        ),
+        helpText("Using multiple cores speeds up Jaccard and Edit Distance methods. Only effective on Linux and Mac (ignored on Windows)."),
+        
+        div(class = "divider"),
+        
         actionButton("run_analysis", "Run Similarity Analysis", 
                     class = "btn-primary", 
                     style = "width: 100%;",
@@ -369,37 +383,40 @@ server <- function(input, output, session) {
       
       tryCatch({
         # Step 1: Calculate similarity matrix
-        incProgress(0.1, detail = "Calculating pairwise similarities...")
+        setProgress(0.05, detail = "Calculating pairwise similarities...")
         
         # Get cosine-specific parameters (with defaults for other methods)
         ngram_size <- if (!is.null(input$ngram_size)) input$ngram_size else 1
         include_actuals <- if (!is.null(input$include_actuals)) input$include_actuals else TRUE
         exclude_library_calls <- if (!is.null(input$exclude_library_calls)) input$exclude_library_calls else TRUE
+        n_cores <- if (!is.null(input$n_cores)) input$n_cores else 1
         
         sim_matrix <- calculate_similarity_matrix(
           rv$script_files,
           method = input$similarity_method,
           progress_callback = function(progress) {
-            incProgress(0.5 * progress, detail = paste("Processing pairs:", 
-                                                       round(progress * 100), "%"))
+            # Use setProgress for absolute positioning to avoid cumulative overshoot
+            setProgress(0.05 + 0.55 * progress,
+                        detail = paste("Processing pairs:", round(progress * 100), "%"))
           },
           ngram_size = ngram_size,
           include_actuals = include_actuals,
-          exclude_library_calls = exclude_library_calls
+          exclude_library_calls = exclude_library_calls,
+          n_cores = n_cores
         )
         
         rv$similarity_matrix <- sim_matrix
         
         # Step 2: Calculate statistics
-        incProgress(0.1, detail = "Computing statistics...")
+        setProgress(0.65, detail = "Computing statistics...")
         rv$stats <- calculate_similarity_stats(sim_matrix)
         
         # Step 3: Identify clusters
-        incProgress(0.1, detail = "Identifying clusters...")
+        setProgress(0.75, detail = "Identifying clusters...")
         rv$clusters <- identify_clusters(sim_matrix, threshold = input$cluster_threshold)
         
         # Step 4: Perform dimensionality reduction
-        incProgress(0.1, detail = paste("Running", toupper(input$viz_method), "..."))
+        setProgress(0.85, detail = paste("Running", toupper(input$viz_method), "..."))
         
         dist_matrix <- similarity_to_distance(sim_matrix)
         
@@ -418,7 +435,7 @@ server <- function(input, output, session) {
         # Add file paths for click functionality
         rv$viz_coords$FilePath <- rv$script_files[match(rv$viz_coords$Script, basename(rv$script_files))]
         
-        incProgress(0.1, detail = "Complete!")
+        setProgress(1, detail = "Complete!")
         
         showNotification("Similarity analysis complete!", type = "message")
         
@@ -913,6 +930,7 @@ create_diff_view <- function(lines1, lines2, name1, name2) {
         name1
       ),
       tags$div(
+        id = "diff-scroll-left",
         style = "max-height: 600px; overflow-y: auto;",
         lapply(seq_along(lines1), function(i) {
           line1 <- lines1[i]
@@ -948,6 +966,7 @@ create_diff_view <- function(lines1, lines2, name1, name2) {
         name2
       ),
       tags$div(
+        id = "diff-scroll-right",
         style = "max-height: 600px; overflow-y: auto;",
         lapply(seq_along(lines2), function(i) {
           line1 <- lines1[i]
@@ -997,7 +1016,37 @@ create_diff_view <- function(lines1, lines2, name1, name2) {
     )
   )
   
-  tagList(diff_html, legend)
+  # JavaScript to synchronise the scroll positions of the two panels
+  sync_scroll_js <- tags$script(HTML(
+    "(function() {
+      var syncing = false;
+      function syncScroll(source, target) {
+        source.addEventListener('scroll', function() {
+          if (!syncing) {
+            syncing = true;
+            target.scrollTop = source.scrollTop;
+            syncing = false;
+          }
+        });
+      }
+      // Panels are rendered asynchronously; poll until both elements are in the DOM
+      var attempts = 0;
+      function attachSync() {
+        var left  = document.getElementById('diff-scroll-left');
+        var right = document.getElementById('diff-scroll-right');
+        if (left && right) {
+          syncScroll(left, right);
+          syncScroll(right, left);
+        } else if (attempts < 50) {
+          attempts++;
+          setTimeout(attachSync, 100);
+        }
+      }
+      attachSync();
+    })();"
+  ))
+  
+  tagList(diff_html, legend, sync_scroll_js)
 }
 
 # Run the application

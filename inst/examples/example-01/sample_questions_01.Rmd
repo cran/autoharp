@@ -1,0 +1,37 @@
+---
+title: "Sample Questions 01"
+output: html_document
+---
+
+Consider the following probability density function (pdf) over the support 
+$(0,1)$:
+
+\begin{equation*}
+f(x) = 
+\begin{cases}
+4x^3 & \text{if } 0 < x < 1 \\
+0 & \text{otherwise}
+\end{cases}
+\end{equation*}
+
+```{r echo=FALSE}
+rf <- function(n) {
+  U <- runif(n)
+  X <- U^(1/4)
+  X
+}
+```
+
+Write a function called `rf`, that generates i.i.d observations from this pdf.
+It should take in exactly one argument, $n$, that determines how many random
+variates to return. For instance:
+
+```{r}
+set.seed(33)
+rf(n = 5)
+```
+
+Now generate 10,000 random variates from this pdf and store them in a vector 
+named `X`.
+
+Your script must generate a function named `rf` and a vector named `X`.

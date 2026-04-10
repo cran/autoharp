@@ -10,7 +10,7 @@
 #'   \item \code{\link{TreeHarp}}
 #' }
 #' 
-#' The user manuals can be found at \url{https://singator.github.io/autoharp-docs/}
+#' The user manuals can be found at \url{https://namanlab.github.io/autoharp/}
 #'
 #' @name autoharp
 "_PACKAGE"

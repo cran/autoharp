@@ -1,7 +1,9 @@
 # wraps a chunk with autoharp.scalars hook with a try expression.
 wrap_chunk <- function(chunk) {
   new_chunk <- chunk
-  if(stringr::str_detect(chunk[1], "autoharp.scalars")){
+  if(stringr::str_detect(chunk[1], "autoharp.scalars") || 
+     any(stringr::str_detect(chunk, "^#\\| autoharp\\.scalars:"))
+     ){
     chunk_head <- chunk[1]
     chunk_tail <- chunk[length(chunk)]
     chunk_body <- chunk[-c(1, length(chunk))]

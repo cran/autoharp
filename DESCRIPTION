@@ -1,14 +1,16 @@
 Package: autoharp
 Title: Semi-Automatic Grading of R and Rmd Scripts
-Version: 0.2.0
+Version: 0.3.1
 Authors@R: c(
-    person("Vik", "Gopal", email="vik.gopal@nus.edu.sg", role="aut"),
-    person("Agrawal", "Naman", email="naman.a@nus.edu.sg", role=c("aut", "cre")),
-    person("Samuel", "Seah", email="samuelseah@u.nus.edu", role="aut"),
-    person("Viknesh", "Jeya Kumar", email="viknesh@u.nus.edu", role="aut"),
-    person("Gabriel", "Ang", email="gabrielang@u.nus.edu", role="aut"),
-    person("Ruofan", "Liu", email="kelseyliu1998@gmail.com", role="ctb"),
-    person("National University of Singapore", role="cph"))
+    person("Vik", "Gopal", , "vik.gopal@nus.edu.sg", role = "aut"),
+    person("Agrawal", "Naman", , "naman.a@nus.edu.sg", role = c("aut", "cre")),
+    person("Yuting", "Huang", , "yhuang@nus.edu.sg", role = "ctb"),
+    person("Samuel", "Seah", , "samuelseah@u.nus.edu", role = "aut"),
+    person("Viknesh", "Jeya Kumar", , "viknesh@u.nus.edu", role = "aut"),
+    person("Gabriel", "Ang", , "gabrielang@u.nus.edu", role = "aut"),
+    person("Ruofan", "Liu", , "kelseyliu1998@gmail.com", role = "ctb"),
+    person("National University of Singapore", role = "cph")
+  )
 Description: A customisable set of tools for assessing and grading 
     R or R-markdown scripts from students. It allows for checking correctness 
     of code output, runtime statistics and static code analysis. The latter 
@@ -16,7 +18,7 @@ Description: A customisable set of tools for assessing and grading
     structure.
 License: MIT + file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.3.3
+RoxygenNote: 7.3.3.9000
 Imports: magrittr, dplyr, stringr, rlang, tibble, knitr, rmarkdown,
         shiny, lintr, methods, igraph, xfun
 Collate: 'treeharp.R' 'th_getter-length.R' 'as.matrix.R' 'autoharp.R'
@@ -30,17 +32,18 @@ Collate: 'treeharp.R' 'th_getter-length.R' 'as.matrix.R' 'autoharp.R'
         'write_html.R' 'zzz.R'
 Suggests: testthat
 SystemRequirements: pandoc (>= 1.14) - http://pandoc.org
-URL: https://singator.github.io/autoharp-docs/
+URL: https://namanlab.github.io/autoharp/
+VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2026-02-19 11:04:30 UTC; namanagrawal
+Packaged: 2026-04-10 03:25:39 UTC; namanagrawal
 Author: Vik Gopal [aut],
   Agrawal Naman [aut, cre],
+  Yuting Huang [ctb],
   Samuel Seah [aut],
   Viknesh Jeya Kumar [aut],
   Gabriel Ang [aut],
   Ruofan Liu [ctb],
   National University of Singapore [cph]
 Maintainer: Agrawal Naman <naman.a@nus.edu.sg>
-Depends: R (>= 3.5.0)
 Repository: CRAN
-Date/Publication: 2026-02-19 11:30:02 UTC
+Date/Publication: 2026-04-10 05:40:02 UTC

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Key Concepts</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+
+
+
+<style type="text/css">
+
+div.csl-bib-body { }
+div.csl-entry {
+clear: both;
+}
+.hanging div.csl-entry {
+margin-left:2em;
+text-indent:-2em;
+}
+div.csl-left-margin {
+min-width:2em;
+float:left;
+}
+div.csl-right-inline {
+margin-left:2em;
+padding-left:1em;
+}
+div.csl-indent {
+margin-left: 2em;
+}
+</style>
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Key Concepts</h1>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#working-directories" id="toc-working-directories">Working
+Directories</a></li>
+<li><a href="#environments" id="toc-environments">Environments</a></li>
+<li><a href="#forked-r-processes" id="toc-forked-r-processes">Forked R
+Processes</a></li>
+<li><a href="#knitr-hooks" id="toc-knitr-hooks"><code>knitr</code>
+Hooks</a></li>
+<li><a href="#references" id="toc-references">References</a></li>
+</ul>
+</div>
+
+<div id="working-directories" class="section level1">
+<h1>Working Directories</h1>
+<p>As part of the grading process, student scripts are converted into
+HTML documents. It is easier for the instructor to review this format,
+if necessary, since it incorporates both the code and output in a single
+document. The autoharp uses the <code>knitr</code> package <span class="citation">(Xie 2025)</span> to achieve this goal. The process of
+rendering an R script (or Rmd/qmd) into an HTML file is referred to as
+<em>knitting</em>.</p>
+<p>As part of the assignments, student scripts may need to read in local
+datasets, or to write to output files. Hence it is important to consider
+the <em>working directory</em> when knitting a file. The working
+directory is the default location that R looks when it is asked to load
+a file or save output. When a file is knitted, the working directory is
+typically the location of the file. However, this may not be ideal when
+grading hundreds of student scripts, across multiple assignments. The
+instructor would want to keep their own files separate from student
+output. To achieve this, the autoharp provides the functionality to
+specify the working directory when knitting a file, and to specify the
+directory where output should be written.</p>
+<p>The only impositions that the package prescribes are:</p>
+<ul>
+<li>students should mirror the instructor set-up with respect to data
+and output files.</li>
+<li>students should use relative paths in all their scripts.</li>
+</ul>
+<p>Relative paths are file paths that refer to files <em>relative</em>
+to the working directory. The alternative to relative paths are absolute
+paths, where a path is hard-coded. However, as pointed out in section
+6.4 of “R for Data Science” (<span class="citation">Hadley Wickham and
+Grolemund (2026)</span>), the use of absolute paths hinders sharing.
+Thus <em>one should only ever use relative paths in scripts</em>.</p>
+</div>
+<div id="environments" class="section level1">
+<h1>Environments</h1>
+<p>The autoharp relies heavily on the concept of environments within R.
+As described in chapter 7 (<span class="citation">Wickham
+(2019)</span>), an environment is simply a data structure that
+associates a set of names to a set of values. It is the key structure in
+how R implements lexical scoping. Every environment (except the empty
+environment) also contains a pointer to a parent environment. When a
+function is executed, it first looks within it’s execution environment
+for objects required. If an object cannot be found, the functions looks
+to the enclosing parent, and so on and so forth, until the object is
+found. If the object cannot be found, an error occurs.</p>
+<p>The autoharp creates a separate environment for each student’s
+script. Objects created when rendering the student scripts are compared
+against model objects, which are created in a <em>solution</em>
+environment when the solution template is rendered.</p>
+</div>
+<div id="forked-r-processes" class="section level1">
+<h1>Forked R Processes</h1>
+<p>The <code>parallel</code> package allows a user to create forked R
+processes from a session. A forked session is a separate R session. It
+is primarily used for running parallel code. However, the autoharp uses
+it to sandbox the execution of student scripts.</p>
+<p>For each student script, <code>render_one</code> creates a new fork,
+within which the script is rendered. The objects generated by the
+student code are stored in an environment within the forked process.
+Subsequently, test chunks are executed by the forked process within the
+student environment.</p>
+<p>The above implementation ensures that objects in the global
+environment (where the instructor executes <code>render_one</code>) and
+packages loaded by the instructor do not interfere with the student
+code. Suppose, on the other hand, that the student scripts were executed
+in the same R process as the grading code. Then, if the student had
+forgotten to load certain packages that their code needed, but the
+instructor session had loaded those packages. Instead of failing to
+render (which is what should happen in this case), the rendering would
+be successful.</p>
+</div>
+<div id="knitr-hooks" class="section level1">
+<h1><code>knitr</code> Hooks</h1>
+<p>As described in chapter 13 (<span class="citation">Xie et al.
+(2020)</span>), a chunk hook is a function that is triggered by a chunk
+option, when the value of this chunk option is not <code>NULL</code>.
+When defining a chunk hook, one can specify if the hook is to be run
+before or after the execution of the subsequent chunk.</p>
+<p>The autoharp defines two hooks:</p>
+<ul>
+<li><p><code>autoharp.objs</code>: The input to this hook must be a
+character vector. When the input is not <code>NULL</code>, the chunk
+hook will create a copy of each object specified in the character
+vector, pre-prended with a period. For instance, if the user specifies
+<code>autoharp.objs = &quot;X&quot;</code>, an object named <code>.X</code> will
+be created in the execution environment of the Rmd file.</p>
+<p>The names of model solution objects in the solution environment begin
+with a period.</p></li>
+<li><p><code>autoharp.scalars</code>: Once again, the input to this hook
+must be a character vector. When not <code>NULL</code>, this character
+vector will be appended to a vector in the solution environment named
+<code>.scalars_to_keep</code>.</p>
+<p>This serves as a reference vector. When the test chunks are executed
+in the student solution environment, the objects specified in
+<code>.scalars_to_keep</code> will be copied out as columns in the
+correctness dataframe.</p></li>
+</ul>
+</div>
+<div id="references" class="section level1 unnumbered">
+<h1 class="unnumbered">References</h1>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-r4ds" class="csl-entry">
+Hadley Wickham, Mine Cetinkaya-Rundel, and Garrett Grolemund. 2026.
+<em>R for Data Science (2e)</em>. O’Reilly. <a href="https://r4ds.hadley.nz/">https://r4ds.hadley.nz/</a>.
+</div>
+<div id="ref-wickham2019advanced" class="csl-entry">
+Wickham, Hadley. 2019. <em>Advanced r</em>. Chapman; hall/CRC. <a href="https://adv-r.hadley.nz">https://adv-r.hadley.nz</a>.
+</div>
+<div id="ref-knitr1" class="csl-entry">
+Xie, Yihui. 2025. <em>Knitr: A General-Purpose Package for Dynamic
+Report Generation in <span>R</span></em>. <a href="https://yihui.org/knitr/">https://yihui.org/knitr/</a>.
+</div>
+<div id="ref-rmarkdown3" class="csl-entry">
+Xie, Yihui, Christophe Dervieux, and Emily Riederer. 2020. <em>R
+Markdown Cookbook</em>. Chapman; Hall/CRC. <a href="https://yihui.org/rmarkdown-cookbook/">https://yihui.org/rmarkdown-cookbook/</a>.
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

@@ -547,16 +547,18 @@ ast_similarity <- function(file1, file2) {
 #' 
 #' @param file_paths Character vector of file paths
 #' @param method Similarity method: "cosine", "jaccard", "edit", "ast"
-#' @param progress_callback Optional function to report progress
+#' @param progress_callback Optional function to report progress (receives values 0-1)
 #' @param ngram_size Size of n-grams to use for cosine similarity (default 1)
 #' @param include_actuals Whether to include actual arguments/literals for cosine similarity (default TRUE)
 #' @param exclude_library_calls Whether to exclude library function calls (default TRUE)
+#' @param n_cores Number of cores for parallel computation (default 1; >1 only effective on Linux/Mac)
 #' @return Similarity matrix
 calculate_similarity_matrix <- function(file_paths, method = "cosine", 
                                        progress_callback = NULL,
                                        ngram_size = 1,
                                        include_actuals = TRUE,
-                                       exclude_library_calls = TRUE) {
+                                       exclude_library_calls = TRUE,
+                                       n_cores = 1) {
   n <- length(file_paths)
   sim_matrix <- matrix(0, nrow = n, ncol = n)
   rownames(sim_matrix) <- basename(file_paths)
@@ -596,37 +598,79 @@ calculate_similarity_matrix <- function(file_paths, method = "cosine",
     return(sim_matrix)
   }
   
-  # For other methods, use pairwise computation
-  # Calculate pairwise similarities
-  total_pairs <- n * (n - 1) / 2
-  current_pair <- 0
+  # Determine effective number of cores (parallel only supported on Linux/Mac)
+  effective_cores <- if (.Platform$OS.type == "windows") {
+    1L
+  } else {
+    max(1L, as.integer(n_cores))
+  }
   
-  for (i in 1:(n-1)) {
-    for (j in (i+1):n) {
-      current_pair <- current_pair + 1
+  # For other methods, use pairwise computation via mcmapply
+  # Generate all upper-triangle pair indices at once
+  combn_ids <- combn(n, 2)
+  total_pairs <- ncol(combn_ids)
+  
+  compute_pair <- function(idx_i, idx_j) {
+    switch(method,
+      "jaccard" = {
+        tokens1 <- parse_script_tokens(file_paths[idx_i])
+        tokens2 <- parse_script_tokens(file_paths[idx_j])
+        jaccard_similarity(tokens1, tokens2)
+      },
+      "edit" = {
+        edit_distance_similarity(file_paths[idx_i], file_paths[idx_j])
+      },
+      "ast" = {
+        ast_similarity(file_paths[idx_i], file_paths[idx_j])
+      },
+      stop("Unknown similarity method")
+    )
+  }
+  
+  if (effective_cores > 1) {
+    # Parallel computation using mcmapply (Linux/Mac only)
+    raw_result <- parallel::mcmapply(
+      compute_pair,
+      idx_i = combn_ids[1, ],
+      idx_j = combn_ids[2, ],
+      mc.cores = effective_cores
+    )
+    
+    # mcmapply can return a list when errors occur in child processes;
+    # coerce to numeric and replace any failures with 0
+    similarities <- tryCatch(
+      as.numeric(raw_result),
+      warning = function(w) {
+        warning(paste("Parallel similarity computation had conversion issues:", w$message))
+        numeric(total_pairs)
+      }
+    )
+    if (length(similarities) != total_pairs || anyNA(similarities)) {
+      warning("Parallel computation returned unexpected results; replacing NA values with 0.")
+      similarities <- numeric(total_pairs)
+    }
+    
+    if (!is.null(progress_callback)) {
+      progress_callback(1.0)
+    }
+  } else {
+    # Sequential computation with progress reporting
+    similarities <- numeric(total_pairs)
+    for (k in seq_len(total_pairs)) {
+      similarities[k] <- compute_pair(combn_ids[1, k], combn_ids[2, k])
       
       if (!is.null(progress_callback)) {
-        progress_callback(current_pair / total_pairs)
+        progress_callback(k / total_pairs)
       }
-      
-      similarity <- switch(method,
-        "jaccard" = {
-          tokens1 <- parse_script_tokens(file_paths[i])
-          tokens2 <- parse_script_tokens(file_paths[j])
-          jaccard_similarity(tokens1, tokens2)
-        },
-        "edit" = {
-          edit_distance_similarity(file_paths[i], file_paths[j])
-        },
-        "ast" = {
-          ast_similarity(file_paths[i], file_paths[j])
-        },
-        stop("Unknown similarity method")
-      )
-      
-      sim_matrix[i, j] <- similarity
-      sim_matrix[j, i] <- similarity
     }
+  }
+  
+  # Fill the similarity matrix from the computed values
+  for (k in seq_len(total_pairs)) {
+    i <- combn_ids[1, k]
+    j <- combn_ids[2, k]
+    sim_matrix[i, j] <- similarities[k]
+    sim_matrix[j, i] <- similarities[k]
   }
   
   return(sim_matrix)

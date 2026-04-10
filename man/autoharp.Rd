@@ -17,13 +17,13 @@ R script/Rmd submissions from students.
   \item \code{\link{TreeHarp}}
 }
 
-The user manuals can be found at \url{https://singator.github.io/autoharp-docs/}
+The user manuals can be found at \url{https://namanlab.github.io/autoharp/}
 }
 
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://singator.github.io/autoharp-docs/}
+  \item \url{https://namanlab.github.io/autoharp/}
 }
 
 }
@@ -40,6 +40,7 @@ Authors:
 
 Other contributors:
 \itemize{
+  \item Yuting Huang \email{yhuang@nus.edu.sg} [contributor]
   \item Ruofan Liu \email{kelseyliu1998@gmail.com} [contributor]
   \item National University of Singapore [copyright holder]
 }
