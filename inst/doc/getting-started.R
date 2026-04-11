@@ -19,38 +19,20 @@ knitr::include_graphics("figs/workflow.png")
 ## ----load---------------------------------------------------------------------
 # library(autoharp)
 
-## ----define-rf, autoharp.objs = "rf"------------------------------------------
-# # Reference solution: saved as .rf in the solution environment
-# rf <- function(n) {
-#   u <- runif(n)
-#   u^(1/4)  # inverse CDF of f(x) = 4x^3
-# }
-
-## ----generate-X, autoharp.objs = "X"------------------------------------------
-# set.seed(2022)
-# X <- rf(10000)  # saved as .X
-
-## ----tests, autoharp.scalars = "test_results"---------------------------------
-# # Each line produces TRUE/FALSE: these become the student's test results
-# length(formals(rf)) == 1          # rf has exactly 1 argument
-# length(X) == 10000                # X has 10,000 elements
-# abs(mean(X) - 0.8) < 0.02        # Mean close to 0.8 (theoretical: 0.8)
-# abs(sd(X) - 0.1633) < 0.02       # SD close to 0.163 (theoretical)
-
 ## ----populate-----------------------------------------------------------------
-# soln <- populate_soln_env("solution_template.Rmd")
+# soln <- populate_soln_env("solution_template.Rmd", pattern = "test")
 # 
 # # soln is a list with two elements:
-# # $soln_env: the knitted solution environment (contains .rf, .X, .test_results)
-# # $test_file: path to the generated test script
+# # $env: the solution environment (contains .rf, .X and other solution objects)
+# # $test_fname: path to the extracted test script (code from test chunks)
 # str(soln)
 
 ## ----render-------------------------------------------------------------------
 # result <- render_one(
-#   rmd_name  = "student01.Rmd",
-#   soln_env  = soln$soln_env,
-#   test_file = soln$test_file,
-#   out_dir   = "output/"
+#   rmd_name      = "student01.Rmd",
+#   out_dir       = "output/",
+#   knit_root_dir = getwd(),
+#   soln_stuff    = soln
 # )
 # 
 # # The result is a one-row data frame
@@ -61,14 +43,14 @@ knitr::include_graphics("figs/workflow.png")
 # student_files <- list.files("submissions/", pattern = "\\.Rmd$", full.names = TRUE)
 # 
 # results_list <- lapply(student_files, function(f) {
-#   render_one(f, soln_env = soln$soln_env, test_file = soln$test_file,
-#              out_dir = "output/")
+#   render_one(rmd_name = f, out_dir = "output/", knit_root_dir = getwd(),
+#              soln_stuff = soln)
 # })
 # 
 # all_results <- do.call(rbind, results_list)
 # 
-# # Print a summary table (pass rates, runtime distribution, etc.)
-# log_summary(all_results)
+# # Print a summary from the log file
+# log_summary("output/render_one.log")
 
 ## ----lints--------------------------------------------------------------------
 # # Count lint violations in a single script
@@ -76,16 +58,14 @@ knitr::include_graphics("figs/workflow.png")
 # 
 # # Count across all submissions
 # all_lints <- count_lints_all(
-#   files = list.files("submissions/", pattern = "\\.R$", full.names = TRUE)
+#   file_names = list.files("submissions/", pattern = "\\.R$", full.names = TRUE)
 # )
 # print(all_lints)
 
 ## ----check-rmd----------------------------------------------------------------
-# # Check that the submitted Rmd has the required sections
-# rmd_check <- check_rmd(
-#   rmd_name          = "student01.Rmd",
-#   expected_sections = c("Introduction", "Analysis", "Conclusion")
-# )
+# # Check that the submitted file is a valid Rmd
+# # Returns TRUE if file has .Rmd extension, YAML header, and R chunks
+# rmd_check <- check_rmd(fname = "student01.Rmd")
 # print(rmd_check)
 
 ## ----grading-app, eval=FALSE--------------------------------------------------

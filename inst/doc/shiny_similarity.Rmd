@@ -49,7 +49,7 @@ cluster detection.
 
 The application supports three methods for computing pairwise similarity:
 
-1.  *Cosine similarity (token-based).* This is the default and recommended
+1.  **Cosine similarity (token-based).** This is the default and recommended
     method for most use cases. It parses each script into tokens using
     \pkg{autoharp}'s `rmd_to_token_count()` function, constructs TF-IDF
     weighted frequency vectors, and computes cosine similarity between them.
@@ -58,13 +58,13 @@ The application supports three methods for computing pairwise similarity:
     literal values in the token set, and optionally exclude function calls from
     loaded packages to focus on the structure of student-written code.
 
-2.  *Jaccard similarity (set-based).* This method compares the unique tokens
+2.  **Jaccard similarity (set-based).** This method compares the unique tokens
     present in each script using the Jaccard index (intersection over union).
     Unlike cosine similarity, it ignores how often tokens appear and focuses
     only on whether they appear at all. This can be useful when detecting
     shared vocabulary matters more than shared patterns of use.
 
-3.  *Edit distance.* This method computes the Levenshtein edit distance between
+3.  **Edit distance.** This method computes the Levenshtein edit distance between
     the raw code strings, normalized by the length of the longer script. It is
     the strictest method, sensitive to whitespace, variable names, and
     formatting. It works best for detecting near-verbatim copies.

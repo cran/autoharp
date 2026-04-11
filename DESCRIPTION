@@ -1,6 +1,6 @@
 Package: autoharp
 Title: Semi-Automatic Grading of R and Rmd Scripts
-Version: 0.3.1
+Version: 0.3.2
 Authors@R: c(
     person("Vik", "Gopal", , "vik.gopal@nus.edu.sg", role = "aut"),
     person("Agrawal", "Naman", , "naman.a@nus.edu.sg", role = c("aut", "cre")),
@@ -35,7 +35,7 @@ SystemRequirements: pandoc (>= 1.14) - http://pandoc.org
 URL: https://namanlab.github.io/autoharp/
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2026-04-10 03:25:39 UTC; namanagrawal
+Packaged: 2026-04-11 08:03:48 UTC; namanagrawal
 Author: Vik Gopal [aut],
   Agrawal Naman [aut, cre],
   Yuting Huang [ctb],
@@ -46,4 +46,4 @@ Author: Vik Gopal [aut],
   National University of Singapore [cph]
 Maintainer: Agrawal Naman <naman.a@nus.edu.sg>
 Repository: CRAN
-Date/Publication: 2026-04-10 05:40:02 UTC
+Date/Publication: 2026-04-11 12:00:12 UTC

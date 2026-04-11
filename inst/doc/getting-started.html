@@ -439,8 +439,8 @@ simultaneously:</p>
 <li>Defines <strong>test code</strong> using special knitr chunk
 options</li>
 </ol>
-<p>Two special chunk options mark what <code>autoharp</code> should
-extract and test:</p>
+<p>Two special chunk options are used in <strong>test chunks</strong>
+(chunks whose names match a pattern, default “test”):</p>
 <table>
 <colgroup>
 <col width="47%" />
@@ -455,14 +455,13 @@ extract and test:</p>
 <tbody>
 <tr class="odd">
 <td><code>autoharp.objs</code></td>
-<td>Lists object names to extract from this chunk and save with a dot
-prefix (e.g., <code>X</code> → <code>.X</code>) for later comparison
-against student objects</td>
+<td>Lists object names to copy from the solution environment so tests
+can compare student objects against solution objects</td>
 </tr>
 <tr class="even">
 <td><code>autoharp.scalars</code></td>
-<td>Marks test code that produces <code>TRUE</code>/<code>FALSE</code>
-scalar results; these are the correctness tests students must pass</td>
+<td>Lists scalar variable names that will be created by the test code;
+these become columns in the output data frame</td>
 </tr>
 </tbody>
 </table>
@@ -477,13 +476,13 @@ habits: their entire analysis must render cleanly.</p>
 <pre><code>Solution Template (.Rmd)
         │
         ▼
-populate_soln_env()  ──► Solution Environment + Test Script
+populate_soln_env()  --&gt; Solution Environment + Test Script
         │
         ▼
-render_one(student.Rmd)  ──► Grading Results Data Frame
+render_one(student.Rmd)  --&gt; Grading Results Data Frame
         │
         ▼
-log_summary()  ──► Summary Report</code></pre>
+log_summary()  --&gt; Summary Report</code></pre>
 <p>Each <code>render_one()</code> call: 1. Launches a <strong>fresh,
 sandboxed R process</strong> (via
 <code>parallel::makePSOCKcluster</code>) 2. Checks for forbidden calls
@@ -510,52 +509,47 @@ the inverse transform method. Then create a vector <code>X</code> of
 <div id="step-1-create-a-solution-template" class="section level3">
 <h3>Step 1: Create a Solution Template</h3>
 <p>Create <code>solution_template.Rmd</code>:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co">---</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="an">title:</span><span class="co"> &quot;Solution Template&quot;</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="an">output:</span><span class="co"> html_document</span></span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co">---</span></span>
+<div class="sourceCode" id="cb5"><pre class="sourceCode default"><code class="sourceCode default"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>---</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>title: &quot;Solution Template&quot;</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>output: html_document</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>---</span>
 <span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a></span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a><span class="in">``` r</span></span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a><span class="co"># Reference solution: saved as .rf in the solution environment</span></span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>rf <span class="ot">&lt;-</span> <span class="cf">function</span>(n) {</span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  u <span class="ot">&lt;-</span> <span class="fu">runif</span>(n)</span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>  u<span class="sc">^</span>(<span class="dv">1</span><span class="sc">/</span><span class="dv">4</span>)  <span class="co"># inverse CDF of f(x) = 4x^3</span></span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>}</span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>```{r solution}</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>rf &lt;- function(n) {</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  u &lt;- runif(n)</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>  u^(1/4)  # inverse CDF of f(x) = 4x^3</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>}</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>X &lt;- rf(10000)</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>```</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>```{r test01, autoharp.objs=c(&quot;rf&quot;, &quot;X&quot;), autoharp.scalars=c(&quot;lenX&quot;, &quot;lenfn&quot;, &quot;meanX&quot;, &quot;sdX&quot;)}</span>
 <span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a></span>
-<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="in">``` r</span></span>
-<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2022</span>)</span>
-<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>X <span class="ot">&lt;-</span> <span class="fu">rf</span>(<span class="dv">10000</span>)  <span class="co"># saved as .X</span></span>
-<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a><span class="in">```</span></span>
-<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a></span>
-<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a></span>
-<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a><span class="in">``` r</span></span>
-<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a><span class="co"># Each line produces TRUE/FALSE: these become the student&#39;s test results</span></span>
-<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a><span class="fu">length</span>(<span class="fu">formals</span>(rf)) <span class="sc">==</span> <span class="dv">1</span>          <span class="co"># rf has exactly 1 argument</span></span>
-<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a><span class="fu">length</span>(X) <span class="sc">==</span> <span class="dv">10000</span>                <span class="co"># X has 10,000 elements</span></span>
-<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a><span class="fu">abs</span>(<span class="fu">mean</span>(X) <span class="sc">-</span> <span class="fl">0.8</span>) <span class="sc">&lt;</span> <span class="fl">0.02</span>        <span class="co"># Mean close to 0.8 (theoretical: 0.8)</span></span>
-<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a><span class="fu">abs</span>(<span class="fu">sd</span>(X) <span class="sc">-</span> <span class="fl">0.1633</span>) <span class="sc">&lt;</span> <span class="fl">0.02</span>       <span class="co"># SD close to 0.163 (theoretical)</span></span>
-<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a><span class="in">```</span></span></code></pre></div>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a># Compare student objects with solution objects</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>lenX &lt;- (length(X) == length(.X))</span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>lenfn &lt;- (length(formals(rf)) == length(formals(.rf)))</span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a></span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a># Check statistical properties</span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a>meanX &lt;- (abs(mean(X) - 0.8) &lt; 0.02)</span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>sdX &lt;- (abs(sd(X) - 0.163) &lt; 0.02)</span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a>```</span></code></pre></div>
 </div>
 <div id="step-2-populate-the-solution-environment" class="section level3">
 <h3>Step 2: Populate the Solution Environment</h3>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>soln <span class="ot">&lt;-</span> <span class="fu">populate_soln_env</span>(<span class="st">&quot;solution_template.Rmd&quot;</span>)</span>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>soln <span class="ot">&lt;-</span> <span class="fu">populate_soln_env</span>(<span class="st">&quot;solution_template.Rmd&quot;</span>, <span class="at">pattern =</span> <span class="st">&quot;test&quot;</span>)</span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
 <span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co"># soln is a list with two elements:</span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># $soln_env: the knitted solution environment (contains .rf, .X, .test_results)</span></span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co"># $test_file: path to the generated test script</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="co"># $env: the solution environment (contains .rf, .X and other solution objects)</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="co"># $test_fname: path to the extracted test script (code from test chunks)</span></span>
 <span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="fu">str</span>(soln)</span></code></pre></div>
 </div>
 <div id="step-3-grade-a-student-submission" class="section level3">
 <h3>Step 3: Grade a Student Submission</h3>
 <p>Suppose a student submits <code>student01.Rmd</code>:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>result <span class="ot">&lt;-</span> <span class="fu">render_one</span>(</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="at">rmd_name  =</span> <span class="st">&quot;student01.Rmd&quot;</span>,</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="at">soln_env  =</span> soln<span class="sc">$</span>soln_env,</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="at">test_file =</span> soln<span class="sc">$</span>test_file,</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="at">out_dir   =</span> <span class="st">&quot;output/&quot;</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="at">rmd_name      =</span> <span class="st">&quot;student01.Rmd&quot;</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="at">out_dir       =</span> <span class="st">&quot;output/&quot;</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="at">knit_root_dir =</span> <span class="fu">getwd</span>(),</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="at">soln_stuff    =</span> soln</span>
 <span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>)</span>
 <span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a></span>
 <span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="co"># The result is a one-row data frame</span></span>
@@ -574,34 +568,29 @@ the inverse transform method. Then create a vector <code>X</code> of
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>file</code></td>
+<td><code>fname</code></td>
 <td>Student’s filename</td>
 </tr>
 <tr class="even">
-<td><code>status</code></td>
-<td><code>&quot;success&quot;</code>, <code>&quot;timeout&quot;</code>,
-<code>&quot;error&quot;</code>, or <code>&quot;precheck_fail&quot;</code></td>
+<td><code>time_stamp</code></td>
+<td>Timestamp of the grading run</td>
 </tr>
 <tr class="odd">
-<td><code>runtime</code></td>
+<td><code>run_status</code></td>
+<td><code>&quot;SUCCESS&quot;</code>, <code>&quot;FAIL&quot;</code>, or
+<code>&quot;UNKNOWN&quot;</code></td>
+</tr>
+<tr class="even">
+<td><code>run_time</code></td>
 <td>Total execution time (seconds)</td>
 </tr>
-<tr class="even">
-<td><code>mem_usage</code></td>
-<td>Peak memory usage (MB)</td>
-</tr>
 <tr class="odd">
-<td><code>test_1</code> … <code>test_n</code></td>
-<td>Result of each correctness test
-(<code>TRUE</code>/<code>FALSE</code>/<code>NA</code>)</td>
+<td><code>run_mem</code></td>
+<td>Memory usage of the environment</td>
 </tr>
 <tr class="even">
-<td><code>n_lints</code></td>
-<td>Number of <code>lintr</code> style violations</td>
-</tr>
-<tr class="odd">
-<td><code>render_success</code></td>
-<td>Did the Rmd render without errors?</td>
+<td><code>lenX</code>, <code>lenfn</code>, …</td>
+<td>Scalar test results defined in <code>autoharp.scalars</code></td>
 </tr>
 </tbody>
 </table>
@@ -612,14 +601,14 @@ the inverse transform method. Then create a vector <code>X</code> of
 <span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>student_files <span class="ot">&lt;-</span> <span class="fu">list.files</span>(<span class="st">&quot;submissions/&quot;</span>, <span class="at">pattern =</span> <span class="st">&quot;</span><span class="sc">\\</span><span class="st">.Rmd$&quot;</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a></span>
 <span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>results_list <span class="ot">&lt;-</span> <span class="fu">lapply</span>(student_files, <span class="cf">function</span>(f) {</span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="fu">render_one</span>(f, <span class="at">soln_env =</span> soln<span class="sc">$</span>soln_env, <span class="at">test_file =</span> soln<span class="sc">$</span>test_file,</span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>             <span class="at">out_dir =</span> <span class="st">&quot;output/&quot;</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="fu">render_one</span>(<span class="at">rmd_name =</span> f, <span class="at">out_dir =</span> <span class="st">&quot;output/&quot;</span>, <span class="at">knit_root_dir =</span> <span class="fu">getwd</span>(),</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>             <span class="at">soln_stuff =</span> soln)</span>
 <span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>})</span>
 <span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a></span>
 <span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>all_results <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, results_list)</span>
 <span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a></span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># Print a summary table (pass rates, runtime distribution, etc.)</span></span>
-<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="fu">log_summary</span>(all_results)</span></code></pre></div>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="co"># Print a summary from the log file</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="fu">log_summary</span>(<span class="st">&quot;output/render_one.log&quot;</span>)</span></code></pre></div>
 <hr />
 </div>
 </div>
@@ -632,24 +621,20 @@ to count style violations:</p>
 <span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
 <span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># Count across all submissions</span></span>
 <span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>all_lints <span class="ot">&lt;-</span> <span class="fu">count_lints_all</span>(</span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  <span class="at">files =</span> <span class="fu">list.files</span>(<span class="st">&quot;submissions/&quot;</span>, <span class="at">pattern =</span> <span class="st">&quot;</span><span class="sc">\\</span><span class="st">.R$&quot;</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  <span class="at">file_names =</span> <span class="fu">list.files</span>(<span class="st">&quot;submissions/&quot;</span>, <span class="at">pattern =</span> <span class="st">&quot;</span><span class="sc">\\</span><span class="st">.R$&quot;</span>, <span class="at">full.names =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>)</span>
 <span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a><span class="fu">print</span>(all_lints)</span></code></pre></div>
-<p>Lint violations are included in the <code>render_one()</code> output
-automatically, so you don’t need to call these separately if you’re
-already running the full pipeline.</p>
+<p>You can run lint checks separately from the main grading pipeline
+using these functions.</p>
 <hr />
 </div>
 <div id="checking-rmd-structure" class="section level2">
 <h2>Checking Rmd Structure</h2>
-<p>For R Markdown submissions, verify that required sections and chunks
-are present:</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># Check that the submitted Rmd has the required sections</span></span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>rmd_check <span class="ot">&lt;-</span> <span class="fu">check_rmd</span>(</span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>  <span class="at">rmd_name          =</span> <span class="st">&quot;student01.Rmd&quot;</span>,</span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>  <span class="at">expected_sections =</span> <span class="fu">c</span>(<span class="st">&quot;Introduction&quot;</span>, <span class="st">&quot;Analysis&quot;</span>, <span class="st">&quot;Conclusion&quot;</span>)</span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>)</span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="fu">print</span>(rmd_check)</span></code></pre></div>
+<p>For R Markdown submissions, verify that the file is a valid Rmd:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># Check that the submitted file is a valid Rmd</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co"># Returns TRUE if file has .Rmd extension, YAML header, and R chunks</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>rmd_check <span class="ot">&lt;-</span> <span class="fu">check_rmd</span>(<span class="at">fname =</span> <span class="st">&quot;student01.Rmd&quot;</span>)</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="fu">print</span>(rmd_check)</span></code></pre></div>
 <hr />
 </div>
 <div id="interactive-grading-with-shiny-apps" class="section level2">
@@ -660,18 +645,18 @@ browser-based interface that wraps the entire workflow:</p>
 <span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>shiny<span class="sc">::</span><span class="fu">runApp</span>(<span class="fu">system.file</span>(<span class="st">&quot;shiny/grading_app&quot;</span>, <span class="at">package =</span> <span class="st">&quot;autoharp&quot;</span>))</span></code></pre></div>
 <p>The Grading App has five tabs:</p>
 <ol style="list-style-type: decimal">
-<li><strong>Session</strong>: start/resume a grading session</li>
+<li><strong>Session</strong>: start/resume a grading session.</li>
 <li><strong>Object Testing</strong>: auto-generate and run correctness
-tests</li>
+tests.</li>
 <li><strong>Template</strong>: generate a solution template from a
-script</li>
+script.</li>
 <li><strong>Autoharp</strong>: run <code>render_one()</code> for all
-submissions with progress tracking</li>
+submissions with progress tracking.</li>
 <li><strong>Plots</strong>: review student plots side-by-side with the
-solution</li>
+solution.</li>
 </ol>
-<p>See the <a href="shiny_grading.html">Shiny Apps Guide</a> for full
-details.</p>
+<p>See the <a href="https://namanlab.github.io/autoharp/articles/shiny_grading.html">Shiny
+Apps Guide</a> for full details.</p>
 <hr />
 </div>
 <div id="next-steps" class="section level2">

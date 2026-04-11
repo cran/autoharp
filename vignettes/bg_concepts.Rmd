@@ -28,7 +28,7 @@ of rendering an R script (or Rmd/qmd) into an HTML file is referred to as *knitt
 
 As part of the assignments, student scripts may need to read in local datasets,
 or to write to output files. Hence it is important to consider the
-*working directory* when knitting a file. The working directory is the default
+working directory when knitting a file. The working directory is the default
 location that R looks when it is asked to load a file or save output. When a
 file is knitted, the working directory is typically the location of the file.
 However, this may not be ideal when grading hundreds of student scripts, across
@@ -62,7 +62,7 @@ occurs.
 
 The autoharp creates a separate environment for each student's script.
 Objects created when rendering the student scripts are compared against model
-objects, which are created in a *solution* environment when the solution
+objects, which are created in a solution environment when the solution
 template is rendered.
 
 # Forked R Processes

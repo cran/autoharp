@@ -82,14 +82,15 @@ devtools::install_github("namanlab/autoharp")
 library(autoharp)
 
 # 1. Render the solution template to build a reference environment
+# Returns a list with $env (solution environment) and $test_fname (test script path) 
 soln <- populate_soln_env("solution_template.Rmd")
 
 # 2. Grade a student submission (runs in a sandboxed process)
 result <- render_one(
-  rmd_name  = "student_submission.Rmd",
-  soln_env  = soln$soln_env,
-  test_file = soln$test_file,
-  out_dir   = "grading_output/"
+  rmd_name      = "student_submission.Rmd",
+  out_dir       = "grading_output/",
+  knit_root_dir = getwd(),
+  soln_stuff    = soln
 )
 
 # 3. Inspect the grading result
@@ -113,12 +114,12 @@ enabling structural code checks that go beyond output comparison:
 
 ```r
 # Convert an expression to a tree
-tree <- lang_2_tree(quote(mean(x + rnorm(10))))
+tree <- TreeHarp(quote(mean(x + rnorm(10))), TRUE)
 plot(tree)
 
 # Check for absence of for-loops across an entire student script
 forest <- rmd_to_forestharp("student_script.Rmd")
-has_for_loop <- any(sapply(forest, function(t) {
+has_for_loop <- any(sapply(forest$forest, function(t) {
   any(t@nodeTypes$name == "for")
 }))
 ```
@@ -186,7 +187,7 @@ submission, evidence that students actively use it to iterate on their work.
 Singapore** across multiple cohorts. Key highlights from production use:
 
 - ✅ Graded hundreds of R/Rmd submissions across statistics courses
-- ⏱️ Each submission grades in under 2 minutes in a sandboxed process
+- ⏱️ Each submission grades with a few minutes minutes in a sandboxed process
 - 🔍 Identified multiple cases of academic dishonesty via the Similarity App
 - 📝 Students using the Solution Checker showed higher submission quality
 
@@ -206,7 +207,7 @@ Singapore** across multiple cohorts. Key highlights from production use:
 If you use `autoharp` in your teaching or research, please cite:
 
 ```bibtex
-@article{gopal2022autoharp,
+@article{gopal2026autoharp,
   title   = {autoharp: An R Package for Autograding R/Rmd/qmd Scripts},
   author  = {Gopal, Vikneswaran and Naman, Agrawal and Huang, Yuting},
   year    = {2026}

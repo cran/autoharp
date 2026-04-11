@@ -283,15 +283,15 @@ rendering an R script (or Rmd/qmd) into an HTML file is referred to as
 <em>knitting</em>.</p>
 <p>As part of the assignments, student scripts may need to read in local
 datasets, or to write to output files. Hence it is important to consider
-the <em>working directory</em> when knitting a file. The working
-directory is the default location that R looks when it is asked to load
-a file or save output. When a file is knitted, the working directory is
-typically the location of the file. However, this may not be ideal when
-grading hundreds of student scripts, across multiple assignments. The
-instructor would want to keep their own files separate from student
-output. To achieve this, the autoharp provides the functionality to
-specify the working directory when knitting a file, and to specify the
-directory where output should be written.</p>
+the working directory when knitting a file. The working directory is the
+default location that R looks when it is asked to load a file or save
+output. When a file is knitted, the working directory is typically the
+location of the file. However, this may not be ideal when grading
+hundreds of student scripts, across multiple assignments. The instructor
+would want to keep their own files separate from student output. To
+achieve this, the autoharp provides the functionality to specify the
+working directory when knitting a file, and to specify the directory
+where output should be written.</p>
 <p>The only impositions that the package prescribes are:</p>
 <ul>
 <li>students should mirror the instructor set-up with respect to data
@@ -319,8 +319,8 @@ to the enclosing parent, and so on and so forth, until the object is
 found. If the object cannot be found, an error occurs.</p>
 <p>The autoharp creates a separate environment for each student’s
 script. Objects created when rendering the student scripts are compared
-against model objects, which are created in a <em>solution</em>
-environment when the solution template is rendered.</p>
+against model objects, which are created in a solution environment when
+the solution template is rendered.</p>
 </div>
 <div id="forked-r-processes" class="section level1">
 <h1>Forked R Processes</h1>

@@ -91,12 +91,12 @@ that does two things simultaneously:
 1. Contains the **reference solution** to the problem
 2. Defines **test code** using special knitr chunk options
 
-Two special chunk options mark what `autoharp` should extract and test:
+Two special chunk options are used in **test chunks** (chunks whose names match a pattern, default "test"):
 
 | Chunk Option | Purpose |
 |--------|---------|
-| `autoharp.objs` | Lists object names to extract from this chunk and save with a dot prefix (e.g., `X` → `.X`) for later comparison against student objects |
-| `autoharp.scalars` | Marks test code that produces `TRUE`/`FALSE` scalar results; these are the correctness tests students must pass |
+| `autoharp.objs` | Lists object names to copy from the solution environment so tests can compare student objects against solution objects |
+| `autoharp.scalars` | Lists scalar variable names that will be created by the test code; these become columns in the output data frame |
 
 > **Why Rmd?** Grading complete documents (rather than isolated snippets)
 > ensures students practice good scientific computing habits: their entire
@@ -108,13 +108,13 @@ Two special chunk options mark what `autoharp` should extract and test:
 Solution Template (.Rmd)
         │
         ▼
-populate_soln_env()  ──► Solution Environment + Test Script
+populate_soln_env()  --> Solution Environment + Test Script
         │
         ▼
-render_one(student.Rmd)  ──► Grading Results Data Frame
+render_one(student.Rmd)  --> Grading Results Data Frame
         │
         ▼
-log_summary()  ──► Summary Report
+log_summary()  --> Summary Report
 ```
 
 Each `render_one()` call:
@@ -140,42 +140,42 @@ Suppose you assign students the following problem:
 
 Create `solution_template.Rmd`:
 
-````markdown
+````{verbatim}
 ---
 title: "Solution Template"
 output: html_document
 ---
 
-```{r define-rf, autoharp.objs = "rf"}
-# Reference solution: saved as .rf in the solution environment
+
+```{r solution}
 rf <- function(n) {
   u <- runif(n)
   u^(1/4)  # inverse CDF of f(x) = 4x^3
 }
+X <- rf(10000)
 ```
 
-```{r generate-X, autoharp.objs = "X"}
-set.seed(2022)
-X <- rf(10000)  # saved as .X
+```{r test01, autoharp.objs=c("rf", "X"), autoharp.scalars=c("lenX", "lenfn", "meanX", "sdX")}
+
+# Compare student objects with solution objects
+lenX <- (length(X) == length(.X))
+lenfn <- (length(formals(rf)) == length(formals(.rf)))
+
+# Check statistical properties
+meanX <- (abs(mean(X) - 0.8) < 0.02)
+sdX <- (abs(sd(X) - 0.163) < 0.02)
 ```
 
-```{r tests, autoharp.scalars = "test_results"}
-# Each line produces TRUE/FALSE: these become the student's test results
-length(formals(rf)) == 1          # rf has exactly 1 argument
-length(X) == 10000                # X has 10,000 elements
-abs(mean(X) - 0.8) < 0.02        # Mean close to 0.8 (theoretical: 0.8)
-abs(sd(X) - 0.1633) < 0.02       # SD close to 0.163 (theoretical)
-```
 ````
 
 ### Step 2: Populate the Solution Environment
 
 ```{r populate}
-soln <- populate_soln_env("solution_template.Rmd")
+soln <- populate_soln_env("solution_template.Rmd", pattern = "test")
 
 # soln is a list with two elements:
-# $soln_env: the knitted solution environment (contains .rf, .X, .test_results)
-# $test_file: path to the generated test script
+# $env: the solution environment (contains .rf, .X and other solution objects)
+# $test_fname: path to the extracted test script (code from test chunks)
 str(soln)
 ```
 
@@ -185,10 +185,10 @@ Suppose a student submits `student01.Rmd`:
 
 ```{r render}
 result <- render_one(
-  rmd_name  = "student01.Rmd",
-  soln_env  = soln$soln_env,
-  test_file = soln$test_file,
-  out_dir   = "output/"
+  rmd_name      = "student01.Rmd",
+  out_dir       = "output/",
+  knit_root_dir = getwd(),
+  soln_stuff    = soln
 )
 
 # The result is a one-row data frame
@@ -199,13 +199,12 @@ The output data frame contains:
 
 | Column | Description |
 |--------|-------------|
-| `file` | Student's filename |
-| `status` | `"success"`, `"timeout"`, `"error"`, or `"precheck_fail"` |
-| `runtime` | Total execution time (seconds) |
-| `mem_usage` | Peak memory usage (MB) |
-| `test_1` ... `test_n` | Result of each correctness test (`TRUE`/`FALSE`/`NA`) |
-| `n_lints` | Number of `lintr` style violations |
-| `render_success` | Did the Rmd render without errors? |
+| `fname` | Student's filename |
+| `time_stamp` | Timestamp of the grading run |
+| `run_status` | `"SUCCESS"`, `"FAIL"`, or `"UNKNOWN"` |
+| `run_time` | Total execution time (seconds) |
+| `run_mem` | Memory usage of the environment |
+| `lenX`, `lenfn`, ... | Scalar test results defined in `autoharp.scalars` |
 
 ### Step 4: Summarise Results Across All Students
 
@@ -214,14 +213,14 @@ The output data frame contains:
 student_files <- list.files("submissions/", pattern = "\\.Rmd$", full.names = TRUE)
 
 results_list <- lapply(student_files, function(f) {
-  render_one(f, soln_env = soln$soln_env, test_file = soln$test_file,
-             out_dir = "output/")
+  render_one(rmd_name = f, out_dir = "output/", knit_root_dir = getwd(),
+             soln_stuff = soln)
 })
 
 all_results <- do.call(rbind, results_list)
 
-# Print a summary table (pass rates, runtime distribution, etc.)
-log_summary(all_results)
+# Print a summary from the log file
+log_summary("output/render_one.log")
 ```
 
 ---
@@ -236,26 +235,23 @@ lint_count <- count_lints_one("student01.R")
 
 # Count across all submissions
 all_lints <- count_lints_all(
-  files = list.files("submissions/", pattern = "\\.R$", full.names = TRUE)
+  file_names = list.files("submissions/", pattern = "\\.R$", full.names = TRUE)
 )
 print(all_lints)
 ```
 
-Lint violations are included in the `render_one()` output automatically, so
-you don't need to call these separately if you're already running the full pipeline.
+You can run lint checks separately from the main grading pipeline using these functions.
 
 ---
 
 ## Checking Rmd Structure
 
-For R Markdown submissions, verify that required sections and chunks are present:
+For R Markdown submissions, verify that the file is a valid Rmd:
 
 ```{r check-rmd}
-# Check that the submitted Rmd has the required sections
-rmd_check <- check_rmd(
-  rmd_name          = "student01.Rmd",
-  expected_sections = c("Introduction", "Analysis", "Conclusion")
-)
+# Check that the submitted file is a valid Rmd
+# Returns TRUE if file has .Rmd extension, YAML header, and R chunks
+rmd_check <- check_rmd(fname = "student01.Rmd")
 print(rmd_check)
 ```
 
@@ -273,13 +269,13 @@ shiny::runApp(system.file("shiny/grading_app", package = "autoharp"))
 
 The Grading App has five tabs:
 
-1. **Session**: start/resume a grading session
-2. **Object Testing**: auto-generate and run correctness tests
-3. **Template**: generate a solution template from a script
-4. **Autoharp**: run `render_one()` for all submissions with progress tracking
-5. **Plots**: review student plots side-by-side with the solution
+1. **Session**: start/resume a grading session. 
+2. **Object Testing**: auto-generate and run correctness tests. 
+3. **Template**: generate a solution template from a script. 
+4. **Autoharp**: run `render_one()` for all submissions with progress tracking. 
+5. **Plots**: review student plots side-by-side with the solution. 
 
-See the [Shiny Apps Guide](shiny_grading.html) for full details.
+See the [Shiny Apps Guide](https://namanlab.github.io/autoharp/articles/shiny_grading.html) for full details.
 
 ---
 

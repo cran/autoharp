@@ -1,8 +1,17 @@
-# v0.3.1:
+# autoharp 0.3.2
+* fixed critical errors in vignettes
+
+# autoharp 0.3.1
 * added 5 vignettes
 
-# v0.3.0:
+# autoharp 0.3.0
 * moved grading app to inst/shiny folder
+
+# autoharp 0.2.1
+
+* Added fix to `wrap_chunks` to work with qmd test chunks correctly.
+* Reduced package size by using bzip2 compression for `retail_clean.rds`.
+* Grading up path usage and plot presentation fixed.
 
 # autoharp 0.2.0
 

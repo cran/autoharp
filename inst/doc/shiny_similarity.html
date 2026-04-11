@@ -372,26 +372,26 @@ technique, and set a threshold for cluster detection.</p>
 <p>The application supports three methods for computing pairwise
 similarity:</p>
 <ol style="list-style-type: decimal">
-<li><p><em>Cosine similarity (token-based).</em> This is the default and
-recommended method for most use cases. It parses each script into tokens
-using ’s <code>rmd_to_token_count()</code> function, constructs TF-IDF
-weighted frequency vectors, and computes cosine similarity between them.
-The method is fast and robust to formatting differences. Instructors can
-configure n-gram size (from unigrams to 5-grams), choose whether to
-include literal values in the token set, and optionally exclude function
-calls from loaded packages to focus on the structure of student-written
-code.</p></li>
-<li><p><em>Jaccard similarity (set-based).</em> This method compares the
-unique tokens present in each script using the Jaccard index
-(intersection over union). Unlike cosine similarity, it ignores how
-often tokens appear and focuses only on whether they appear at all. This
-can be useful when detecting shared vocabulary matters more than shared
-patterns of use.</p></li>
-<li><p><em>Edit distance.</em> This method computes the Levenshtein edit
-distance between the raw code strings, normalized by the length of the
-longer script. It is the strictest method, sensitive to whitespace,
-variable names, and formatting. It works best for detecting
-near-verbatim copies.</p></li>
+<li><p><strong>Cosine similarity (token-based).</strong> This is the
+default and recommended method for most use cases. It parses each script
+into tokens using ’s <code>rmd_to_token_count()</code> function,
+constructs TF-IDF weighted frequency vectors, and computes cosine
+similarity between them. The method is fast and robust to formatting
+differences. Instructors can configure n-gram size (from unigrams to
+5-grams), choose whether to include literal values in the token set, and
+optionally exclude function calls from loaded packages to focus on the
+structure of student-written code.</p></li>
+<li><p><strong>Jaccard similarity (set-based).</strong> This method
+compares the unique tokens present in each script using the Jaccard
+index (intersection over union). Unlike cosine similarity, it ignores
+how often tokens appear and focuses only on whether they appear at all.
+This can be useful when detecting shared vocabulary matters more than
+shared patterns of use.</p></li>
+<li><p><strong>Edit distance.</strong> This method computes the
+Levenshtein edit distance between the raw code strings, normalized by
+the length of the longer script. It is the strictest method, sensitive
+to whitespace, variable names, and formatting. It works best for
+detecting near-verbatim copies.</p></li>
 </ol>
 <p>After selecting a similarity method, the instructor chooses a
 visualization technique. The application offers t-SNE (t-Distributed
