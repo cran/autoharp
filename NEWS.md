@@ -1,3 +1,7 @@
+# autoharp 0.4.0
+* Improved version of the grading app
+* Added a warning to the similarity app
+
 # autoharp 0.3.2
 * fixed critical errors in vignettes
 

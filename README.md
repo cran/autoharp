@@ -6,6 +6,7 @@
 [![pkgdown](https://img.shields.io/github/actions/workflow/status/namanlab/test_autoharp_2/pkgdown.yaml?logo=github&logoColor=white&label=pkgdown&style=flat-square)](https://namanlab.github.io/test_autoharp_2/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT)
 -->
+[![CRAN downloads](https://cranlogs.r-pkg.org/badges/autoharp)](https://cran.r-project.org/package=autoharp)
 <!-- badges: end -->
 
 > **Semi-automatic grading of R and Rmd scripts**: powerful, flexible, and
@@ -30,10 +31,10 @@ this with four complementary layers:
 
 | Feature | What it Does |
 |---------|-------------|
-| ✅ **Output correctness** | Compare student objects against a reference solution using typed, tolerance-aware checks |
-| ⏱️ **Runtime & memory profiling** | Measure how long student code takes and how much memory it uses |
-| 🌳 **Static code analysis (AST)** | Inspect Abstract Syntax Trees to check *how* students solved a problem: e.g., "did they use `apply` instead of a `for` loop?" |
-| 🔍 **Similarity detection** | Identify suspiciously similar submissions using cosine, Jaccard, or edit-distance metrics |
+| **Output correctness** | Compare student objects against a reference solution using typed, tolerance-aware checks |
+| **Runtime & memory profiling** | Measure how long student code takes and how much memory it uses |
+| **Static code analysis (AST)** | Inspect Abstract Syntax Trees to check *how* students solved a problem: e.g., "did they use `apply` instead of a `for` loop?" |
+| **Similarity detection** | Identify suspiciously similar submissions using cosine, Jaccard, or edit-distance metrics |
 
 </div>
 
@@ -47,12 +48,12 @@ this with four complementary layers:
 
 The workflow has **four phases**:
 
-1. 📝 **Prepare**: Write a question sheet and a *solution template* (an Rmd
+1. **Prepare**: Write a question sheet and a *solution template* (an Rmd
    with special `autoharp.objs` / `autoharp.scalars` chunk options)
-2. 📤 **Distribute**: Share the question sheet and a blank student template
-3. ⚙️ **Grade**: Run `populate_soln_env()` then `render_one()` per student;
+2. **Distribute**: Share the question sheet and a blank student template
+3. **Grade**: Run `populate_soln_env()` then `render_one()` per student;
    each submission runs in a sandboxed R process
-4. 📊 **Review**: Inspect results via logs, thumbnail galleries, and the
+4. **Review**: Inspect results via logs, thumbnail galleries, and the
    interactive Grading App
 
 ---
@@ -101,13 +102,13 @@ print(result)
 
 ## The Three Pillars of autoharp
 
-### 1. 📄 Complete Documents, Not Snippets
+### 1. Complete Documents, Not Snippets
 
 `autoharp` grades **complete, reproducible documents**: entire R scripts or
 R Markdown files, rather than isolated code snippets. This encourages good
 scientific computing practices and tests the full submission pipeline.
 
-### 2. 🌳 Static Analysis via AST Trees
+### 2. Static Analysis via AST Trees
 
 The `TreeHarp` S4 class represents any R expression as a **rooted tree**,
 enabling structural code checks that go beyond output comparison:
@@ -124,7 +125,7 @@ has_for_loop <- any(sapply(forest$forest, function(t) {
 }))
 ```
 
-### 3. 🖥️ Integrated Shiny Applications
+### 3. Integrated Shiny Applications
 
 `autoharp` ships with **three ready-to-use Shiny applications**:
 
@@ -186,19 +187,19 @@ submission, evidence that students actively use it to iterate on their work.
 `autoharp` was developed and validated at the **National University of
 Singapore** across multiple cohorts. Key highlights from production use:
 
-- ✅ Graded hundreds of R/Rmd submissions across statistics courses
-- ⏱️ Each submission grades with a few minutes minutes in a sandboxed process
-- 🔍 Identified multiple cases of academic dishonesty via the Similarity App
-- 📝 Students using the Solution Checker showed higher submission quality
+- Graded hundreds of R/Rmd submissions across statistics courses
+- Each submission grades with a few minutes in a sandboxed process
+- Identified multiple cases of academic dishonesty via the Similarity App
+- Students using the Solution Checker showed higher submission quality
 
 ---
 
 ## Learning More
 
-- 📖 [Get Started](https://namanlab.github.io/autoharp/articles/getting-started.html): step-by-step introduction
-- 🌳 [TreeHarp Tutorial](https://namanlab.github.io/autoharp/articles/treeharp_class.html): deep dive into AST-based analysis
-- 🔄 [Grading Workflow](https://namanlab.github.io/autoharp/articles/demo_workflow.html): complete end-to-end example
-- 📚 [Function Reference](https://namanlab.github.io/autoharp/reference/index.html): full API documentation
+- [Get Started](https://namanlab.github.io/autoharp/articles/getting-started.html): step-by-step introduction
+- [TreeHarp Tutorial](https://namanlab.github.io/autoharp/articles/treeharp_class.html): deep dive into AST-based analysis
+- [Grading Workflow](https://namanlab.github.io/autoharp/articles/demo_workflow.html): complete end-to-end example
+- [Function Reference](https://namanlab.github.io/autoharp/reference/index.html): full API documentation
 
 ---
 

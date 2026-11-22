@@ -1,6 +1,8 @@
 ---
 title: "Sample Questions 01"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 Consider the following probability density function (pdf) over the support 
@@ -22,16 +24,32 @@ rf <- function(n) {
 }
 ```
 
-Write a function called `rf`, that generates i.i.d observations from this pdf.
-It should take in exactly one argument, $n$, that determines how many random
-variates to return. For instance:
+1.  Write a function called `rf`, that generates i.i.d observations from this pdf.
+    It should take in exactly one argument, $n$, that determines how many random
+    variates to return. For instance:
 
 ```{r}
 set.seed(33)
 rf(n = 5)
 ```
 
-Now generate 10,000 random variates from this pdf and store them in a vector 
-named `X`.
+2.  Now generate 10,000 random variates from this pdf and store them in a vector 
+    named `X`.
+    
+3.  Use base R to re-create the following plot of the pdf over the interval (0,1). It 
+    overlays the density on the histogram of generated values.
 
-Your script must generate a function named `rf` and a vector named `X`.
+```{r, echo=FALSE, fig.align='center', out.width='75%'}
+X <- rf(1e4)
+x <- seq(0, 1, length.out=100)
+y <- 4*x^3
+hist(X, freq=FALSE, main="Histogram and pdf")
+lines(x, y, col="red", type="l", main="Plot of pdf f(x)", lwd=2)
+```
+
+
+Your script must generate: 
+
+- a function named `rf`,
+- a vector named `X`, and 
+- the above plot.

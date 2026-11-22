@@ -30,3 +30,9 @@ f1 <- rmd_to_forestharp(.myfilename)
 for_loop <- fapply(f1, detect_for_in_fn_def, fn_name = "rf", combine=TRUE, 
                    combiner_fn = function(x) any(unlist(x)))
 ```
+
+```{r test04, autoharp.scalars=c("hist_freq_arg")}
+hist_freq_arg <- fapply(f1, detect_fn_arg, fn_name = "hist", arg="freq",  
+                        combine=TRUE,  
+                        combiner_fn = function(x) any(unlist(x)))
+```

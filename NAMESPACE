@@ -72,28 +72,34 @@ exportMethods(names)
 exportMethods(plot)
 exportMethods(show)
 importFrom(magrittr,"%>%")
-importFrom(methods,as)
-importFrom(methods,is)
-importFrom(methods,new)
-importFrom(methods,setClass)
-importFrom(methods,setValidity)
-importFrom(methods,show)
-importFrom(methods,slot)
-importFrom(parallel,clusterCall)
-importFrom(parallel,clusterEvalQ)
-importFrom(parallel,clusterExport)
-importFrom(parallel,makePSOCKcluster)
-importFrom(parallel,stopCluster)
-importFrom(rlang,.data)
-importFrom(rlang,call_args)
-importFrom(rlang,call_args_names)
-importFrom(rlang,call_name)
-importFrom(rlang,enexpr)
-importFrom(rlang,is_formula)
-importFrom(rlang,is_na)
-importFrom(rlang,is_pairlist)
-importFrom(rlang,is_symbol)
-importFrom(rlang,is_syntactic_literal)
+importFrom(methods,
+  as,
+  is,
+  new,
+  setClass,
+  setValidity,
+  show,
+  slot
+)
+importFrom(parallel,
+  clusterCall,
+  clusterEvalQ,
+  clusterExport,
+  makePSOCKcluster,
+  stopCluster
+)
+importFrom(rlang,
+  .data,
+  call_args,
+  call_args_names,
+  call_name,
+  enexpr,
+  is_formula,
+  is_na,
+  is_pairlist,
+  is_symbol,
+  is_syntactic_literal
+)
 importFrom(rmarkdown,render)
 importFrom(stats,na.omit)
 importFrom(utils,tail)

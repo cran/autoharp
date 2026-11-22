@@ -5,17 +5,12 @@ library(rmarkdown)
 library(autoharp)
 library(shinyFiles)
 
-# Check if shinyFiles is available
-# if (!requireNamespace("shinyFiles", quietly = TRUE)) {
-#   message("Note: shinyFiles package not available. Folder selection buttons will not be functional.")
-#   SHINYFILES_AVAILABLE <- FALSE
-# } else {
-#   library(shinyFiles)
-#   SHINYFILES_AVAILABLE <- TRUE
-# }
-
 SHINYFILES_AVAILABLE <- TRUE
 source(file.path("R", "helpers.R"))
+
+# =========================================
+# Path helpers
+# =========================================
 
 # Helper function to check if a path is absolute
 # Returns TRUE if the path starts with:
@@ -23,46 +18,249 @@ source(file.path("R", "helpers.R"))
 #   - Unix absolute path: /
 #   - UNC path: \\server or //server
 is_absolute_path <- function(path) {
-  # Pattern breakdown:
-  # [A-Za-z]: - Windows drive letter (C:, D:, etc.)
-  # / - Unix absolute path starting with /
-  # \\\\\\\\ - UNC path starting with \\ (escaped for R)
-  # // - UNC path starting with // (forward slash variant)
   grepl("^([A-Za-z]:|/|\\\\\\\\|//)", path)
 }
 
-# Helper function to normalize a path based on whether it exists
-normalize_path_safe <- function(path) {
-  if (dir.exists(path)) {
-    normalizePath(path, winslash = "/", mustWork = TRUE)
-  } else {
-    normalizePath(path, winslash = "/", mustWork = FALSE)
+# TRUE for NULL, NA, empty or whitespace-only input values
+is_blank <- function(x) {
+  is.null(x) || length(x) == 0 || is.na(x[1]) || !nzchar(trimws(x[1]))
+}
+
+# Resolve a typed folder path: absolute paths are used as they are, relative
+# paths are resolved against the app's working directory. NULL if blank.
+resolve_path <- function(path) {
+  if (is_blank(path)) return(NULL)
+  path <- path.expand(trimws(path))
+  if (!is_absolute_path(path)) {
+    path <- file.path(getwd(), path)
   }
+  # normalize the part that exists, so "../" is resolved even when the
+  # folder itself does not exist yet
+  tidy <- function(p) {
+    if (file.exists(p) || dirname(p) == p) return(normalizePath(p, winslash = "/", mustWork = FALSE))
+    file.path(tidy(dirname(p)), basename(p))
+  }
+  tidy(path)
+}
+
+# Resolved folder path if the folder exists, otherwise NULL
+existing_folder <- function(path) {
+  resolved <- resolve_path(path)
+  if (!is.null(resolved) && dir.exists(resolved)) resolved else NULL
+}
+
+# Student submission files (R, Rmd, QMD) in a folder
+STUDENT_FILE_PATTERN <- "\\.(R|r|Rmd|rmd|qmd|Qmd)$"
+list_student_files <- function(folder) {
+  list.files(folder, pattern = STUDENT_FILE_PATTERN, full.names = TRUE)
+}
+
+# Status of a typed folder path: its resolved location, whether it exists,
+# and the student files in it
+folder_info <- function(path) {
+  resolved <- resolve_path(path)
+  exists <- !is.null(resolved) && dir.exists(resolved)
+  files <- if (exists) list_student_files(resolved) else character(0)
+  list(path = resolved, exists = exists, files = files)
+}
+
+# e.g. "3 .Rmd, 2 .R"
+file_type_summary <- function(files) {
+  counts <- table(paste0(".", tools::file_ext(files)))
+  paste(paste(counts, names(counts)), collapse = ", ")
+}
+
+# Temporary copy of a student file that keeps running after an error, as the
+# original Object Testing grading did (rmarkdown::render, used by render_one,
+# otherwise stops at the first error). A hidden first chunk sets
+# knitr::opts_chunk$set(error = TRUE). The student's own file is not changed.
+allow_errors_copy <- function(student_file) {
+  copy_dir <- tempfile("graded_")
+  dir.create(copy_dir)
+  copy <- file.path(copy_dir, basename(student_file))
+  lines <- readLines(student_file, warn = FALSE)
+  if (grepl("\\.[Rr]$", student_file)) {
+    # R scripts are rendered via knitr::spin; "#+" lines start chunks
+    lines <- c("#+ autoharp_allow_errors, include=FALSE",
+               "knitr::opts_chunk$set(error = TRUE)",
+               "#+",
+               lines)
+  } else {
+    setup <- c("```{r autoharp_allow_errors, include=FALSE}",
+               "knitr::opts_chunk$set(error = TRUE)",
+               "```",
+               "")
+    # insert after the YAML header, if there is one
+    yaml_end <- 0
+    if (length(lines) > 0 && grepl("^---\\s*$", lines[1])) {
+      closing <- which(grepl("^---\\s*$", lines))[2]
+      if (!is.na(closing)) yaml_end <- closing
+    }
+    lines <- append(lines, setup, after = yaml_end)
+  }
+  writeLines(lines, copy)
+  copy
+}
+
+# Errors that occurred in a student's code chunks, read from the knitted
+# markdown that render_one leaves in the output folder
+student_code_errors <- function(out_dir, student_file) {
+  md_file <- file.path(out_dir, paste0(tools::file_path_sans_ext(basename(student_file)), ".knit.md"))
+  if (!file.exists(md_file)) return(character(0))
+  sub("^Error: ", "", extract_knit_errors(readLines(md_file, warn = FALSE)))
+}
+
+# Where grading output (rendered files, plots, session RDS files) is written.
+# Absolute paths are used as they are. Relative paths are placed next to the
+resolve_output_dir <- function(output, student_folder) {
+  if (is_blank(output)) output <- "student_out"
+  output <- path.expand(trimws(output))
+  if (is_absolute_path(output)) {
+    return(normalizePath(output, winslash = "/", mustWork = FALSE))
+  }
+  student_dir <- existing_folder(student_folder)
+  if (is.null(student_dir)) return(NULL)
+  normalizePath(file.path(dirname(student_dir), output), winslash = "/", mustWork = FALSE)
+}
+
+# Width and height of a PNG file read from its header, or NULL for other files
+png_dimensions <- function(path) {
+  con <- file(path, "rb")
+  on.exit(close(con))
+  bytes <- readBin(con, "raw", 24)
+  png_signature <- as.raw(c(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a))
+  if (length(bytes) < 24 || !identical(bytes[1:8], png_signature)) return(NULL)
+  to_int <- function(b) sum(as.integer(b) * 256^(3:0))
+  c(width = to_int(bytes[17:20]), height = to_int(bytes[21:24]))
+}
+
+# Short names of the default tests generate_type_tests() writes for an object
+suggested_tests <- function(obj, obj_name, include_all_tests = TRUE) {
+  scalars <- generate_type_tests(obj, obj_name, include_all_tests)$scalars
+  prefix <- paste0(sanitize_name(obj_name), "_")
+  tests <- substring(scalars, nchar(prefix) + 1)
+  gsub("_", " ", sub("_check$", "", tests))
+}
+
+# Error messages from knitted markdown (knitr keeps going past chunk errors)
+extract_knit_errors <- function(md_lines) {
+  idx <- grep("^## Error", md_lines)
+  vapply(idx, function(i) {
+    msg <- sub("^## ", "", md_lines[i])
+    if (i < length(md_lines) && grepl("^## !", md_lines[i + 1])) {
+      msg <- paste(msg, sub("^## ! ?", "", md_lines[i + 1]))
+    }
+    # name the missing file: it is only given in the warning printed just before
+    if (grepl("cannot open the connection", msg)) {
+      before <- paste(sub("^## ", "", md_lines[max(1, i - 8):max(1, i - 1)]), collapse = " ")
+      missing_file <- regmatches(before, regexpr("cannot open file '[^']+'", before))
+      if (length(missing_file) > 0) msg <- paste0(msg, " (", missing_file, ")")
+    }
+    msg
+  }, character(1))
+}
+
+# Text input with a folder browser button underneath (as in the original
+# layout) and a live status line (files found / folder not found)
+folder_input <- function(id, label, button_id, placeholder = NULL) {
+  tagList(
+    textInput(id, label, placeholder = placeholder, width = "100%"),
+    if (SHINYFILES_AVAILABLE) {
+      shinyFiles::shinyDirButton(button_id, "Browse...", label,
+                                 class = "btn-secondary btn-browse")
+    },
+    uiOutput(paste0(id, "_status"))
+  )
+}
+
+# Sidebar and main column widths: 3/9 on large screens (as in the original
+# layout), 4/8 on medium screens so the sidebar inputs are not cramped
+sidebar_column <- function(...) div(class = "col-sm-4 col-lg-3", ...)
+main_column <- function(...) div(class = "col-sm-8 col-lg-9", ...)
+
+# Documentation of the default tests generated for each object type
+# (matches generate_type_tests() in R/helpers.R; "extra" tests are only added
+# when "Include all comprehensive tests" is ticked)
+tests_documentation_ui <- function() {
+  doc <- list(
+    "Numeric Vectors" = list(
+      basic = c(length = "compares length", mean = "compares mean (tolerance 1e-6)",
+                identical = "checks all values match (tolerance 1e-6)"),
+      extra = c(sd = "compares standard deviation", "min / max" = "compares minimum and maximum",
+                sum = "compares sum", na_count = "compares number of NA values")),
+    "Character Vectors" = list(
+      basic = c(length = "compares length", identical = "checks all values match"),
+      extra = c(unique_count = "compares number of unique values",
+                nchar_total = "compares total number of characters")),
+    "Logical Vectors" = list(
+      basic = c(length = "compares length", identical = "checks all values match",
+                sum_true = "compares number of TRUE values"),
+      extra = c(na_count = "compares number of NA values")),
+    "Data Frames" = list(
+      basic = c("nrow / ncol" = "compares dimensions", colnames = "checks column names match"),
+      extra = c(coltypes = "checks column types match",
+                "col_<name>_mean" = "compares means of numeric columns (up to 3)")),
+    "Matrices" = list(
+      basic = c("nrow / ncol / dim" = "compares dimensions"),
+      extra = c("rownames / colnames" = "checks names match", mean = "compares overall mean",
+                max_diff = "checks largest element difference")),
+    "Lists" = list(
+      basic = c(length = "compares number of elements", names = "checks element names match"),
+      extra = c("elem_<name>" = "compares named elements (up to 3)")),
+    "Functions" = list(
+      basic = c(num_args = "compares number of arguments", arg_names = "checks argument names match"),
+      extra = c(is_function = "checks the object is a function")),
+    "Factors" = list(
+      basic = c(length = "compares length", "nlevels / levels" = "compares the levels"),
+      extra = c(level_order = "checks level order matches", frequencies = "compares level frequencies")),
+    "Other Objects" = list(
+      basic = c(class = "checks classes match", identical = "checks objects are equal"),
+      extra = character(0))
+  )
+  test_items <- function(tests, extra = FALSE) {
+    lapply(names(tests), function(test) {
+      tags$li(class = if (extra) "extra-test",
+              tags$strong(test), paste0(" - ", tests[[test]]),
+              if (extra) tags$span(class = "extra-mark", "*"))
+    })
+  }
+  items <- lapply(names(doc), function(type) {
+    div(class = "col-sm-6 col-lg-4",
+        div(class = "tests-doc-item",
+            tags$h5(type),
+            tags$ul(test_items(doc[[type]]$basic),
+                    test_items(doc[[type]]$extra, extra = TRUE))))
+  })
+  tagList(
+    div(class = "row tests-doc", items),
+    p(class = "text-muted small",
+      "* Comprehensive tests: only added when \"Include all comprehensive tests\" is ticked.")
+  )
 }
 
 
+# =========================================
+# UI
+# =========================================
+
 ui <- fluidPage(
+  title = "Autoharp Instructor Grading App",
   tags$head(
     tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
     tags$script(HTML("
       // Function to open plot modal from button with data attributes
       function openPlotModalFromButton(button) {
-        var imgSrc = button.getAttribute('data-img-src');
-        var plotTitle = button.getAttribute('data-plot-title');
         var modal = document.getElementById('plotModal');
-        var modalImg = document.getElementById('modalPlotImg');
-        var modalTitle = document.getElementById('modalPlotTitle');
-        modalImg.src = imgSrc;
-        modalTitle.textContent = plotTitle;
+        document.getElementById('modalPlotImg').src = button.getAttribute('data-img-src');
+        document.getElementById('modalPlotTitle').textContent = button.getAttribute('data-plot-title');
         modal.classList.add('active');
       }
-      
+
       // Function to close plot modal
       function closePlotModal() {
-        var modal = document.getElementById('plotModal');
-        modal.classList.remove('active');
+        document.getElementById('plotModal').classList.remove('active');
       }
-      
+
       // Move the modal to document.body on load so it escapes any
       // Shiny/Bootstrap stacking contexts that clip fixed elements
       document.addEventListener('DOMContentLoaded', function() {
@@ -72,1718 +270,1139 @@ ui <- fluidPage(
         }
         if (modal) {
           modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-              closePlotModal();
-            }
+            if (e.target === modal) closePlotModal();
           });
         }
       });
-      
+
       // Close modal with Escape key
       document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-          closePlotModal();
-        }
+        if (e.key === 'Escape') closePlotModal();
       });
     "))
   ),
+
+  # Header with session controls in the top-right corner
   div(class = "main-header",
-      h2("Autoharp Instructor Grading App"),
-      p("Automated grading of R/Rmd/QMD student submissions")
+      div(class = "header-content",
+          div(class = "header-title",
+              h2("Autoharp Instructor Grading App"),
+              p("Automated grading of R/Rmd/QMD student submissions")
+          ),
+          div(class = "header-session",
+              div(class = "header-session-buttons",
+                  actionButton("save_session_btn", "Save Session", icon = icon("save"),
+                               class = "btn-header"),
+                  actionButton("load_session_btn", "Load Session", icon = icon("folder-open"),
+                               class = "btn-header")
+              ),
+              uiOutput("autosave_status")
+          )
+      )
   ),
-  
+
   # Main content with tabs
   tabsetPanel(
     id = "main_tabs",
     type = "tabs",
-    
-    # Tab 0: Session Management
+
+    # Tab 1: Template Generation
     tabPanel(
-      "Session",
-      value = "session",
-      
+      "Template Generation",
+      value = "template",
+
       br(),
-      
-      fluidRow(
-        column(
-          width = 6,
-          div(class = "panel-section",
-              h4(icon("save"), " Load Previous Session"),
-              p("Resume a previous grading session by uploading a session file."),
-              
-              fileInput(
-                inputId = "session_file",
-                label = "Upload Session File (.rds):",
-                accept = c(".rds"),
-                width = "100%"
-              ),
-              
-              uiOutput("session_status"),
-              
-              actionButton("load_session", "Load Session", 
-                           class = "btn-primary", 
-                           icon = icon("upload"))
-          )
-        ),
-        
-        column(
-          width = 6,
-          div(class = "panel-section",
-              h4(icon("info-circle"), " Current Session Info"),
-              
-              uiOutput("current_session_info"),
-              
-              br(),
-              
-              actionButton("save_session_manual", "Save Session Now", 
-                           class = "btn-success", 
-                           icon = icon("save")),
-              
-              p(class = "text-muted small", style = "margin-top: 10px;",
-                "Sessions are auto-saved after grading operations. Use this to save manually.")
-          )
-        )
-      )
-    ),
-    
-    # Tab 1: Object Testing
-    tabPanel(
-      "Object Testing",
-      value = "testing",
-      
-      br(),
-      
+
       fluidRow(
         # Left sidebar - Setup
-        column(
-          width = 3,
+        sidebar_column(
           div(class = "sidebar-panel",
               h4(icon("cog"), " Setup"),
-              
+
               fileInput(
                 inputId = "solution_file",
-                label = "Upload Solution Template (RMD/QMD):",
+                label = "Upload Model Solution (RMD/QMD):",
                 accept = c(".Rmd", ".rmd", ".qmd", ".Qmd"),
                 width = "100%"
               ),
-              
-              textInput(
-                inputId = "student_folder",
-                label = "Path to Student Scripts Folder:",
-                placeholder = "../comprehensive_tests/soln_dir",
-                width = "100%"
-              ),
-              
-              # Add folder selection button if shinyFiles is available
-              if (SHINYFILES_AVAILABLE) {
-                shinyFiles::shinyDirButton("student_folder_select", "Browse...", 
-                                           "Select student scripts folder",
-                                           class = "btn-secondary",
-                                           style = "width: 100%; margin-top: -10px;")
-              } else {
-                NULL
-              },
-              
-              textInput(
-                inputId = "output_folder",
-                label = "Output Directory:",
-                value = "grading_output",
-                placeholder = "grading_output",
-                width = "100%"
-              ),
-              
-              p(class = "text-muted small", 
-                "Directory for plots, results, and session files."),
-              
+
+              folder_input("tg_run_folder", "Run Model Solution From (optional):",
+                           "tg_run_folder_select",
+                           placeholder = "/path/to/folder"),
+
+              p(class = "text-muted small",
+                "Set this if the model solution reads data files: relative paths in it ",
+                "(e.g. ../data/file.csv) are resolved from this folder. ",
+                "Leave it empty if the solution does not read any files."),
+
               div(class = "divider"),
-              
-              h5(icon("list-check"), " Objects to Test"),
-              div(class = "object-checkbox-group",
-                  uiOutput("object_selector")
-              ),
-              
-              div(class = "divider"),
-              
-              actionButton("run_grading", "Run Automated Grading", 
-                           class = "btn-primary", 
-                           style = "width: 100%;",
-                           icon = icon("play")),
-              
-              br(), br(),
-              
-              downloadButton("download_csv", "Download Results as CSV",
-                             class = "btn-success",
-                             style = "width: 100%")
-          )
-        ),
-        
-        # Main content area
-        column(
-          width = 9,
-          
-          # Status messages
-          uiOutput("grading_status"),
-          
-          # Summary Results
-          div(class = "panel-section",
-              h4(icon("chart-bar"), " Summary Results"),
-              p("Summary of test results by student and object."),
-              DTOutput("grading_results")
-          ),
-          
-          div(class = "panel-section",
-              h4(icon("list-alt"), " Detailed Results"),
-              p("Detailed view of failed tests."),
-              DTOutput("detailed_results")
-          )
-        )
-      )
-    ),
-    
-    # Tab 2: Template Download
-    tabPanel(
-      "Template Download",
-      value = "download",
-      
-      br(),
-      
-      fluidRow(
-        column(
-          width = 3,
-          div(class = "sidebar-panel",
-              h4(icon("info-circle"), " Instructions"),
-              
-              p("This tab generates an autoharp-compatible solution template with test chunks."),
-              
-              tags$ol(
-                tags$li("Upload a solution RMD file in the 'Object Testing' tab"),
-                tags$li("Select which objects to include in tests"),
-                tags$li("Click 'Generate Template' to create the autoharp version"),
-                tags$li("Download the generated template")
-              ),
-              
-              div(class = "divider"),
-              
-              h5(icon("cogs"), " Options"),
-              
+
+              h5(icon("cogs"), " Template Options"),
+
               textInput(
                 inputId = "test_prefix",
                 label = "Test chunk prefix:",
                 value = "test",
                 width = "100%"
               ),
-              
+
               checkboxInput(
                 inputId = "include_all_tests",
                 label = "Include all comprehensive tests",
                 value = TRUE
               ),
-              
+
               div(class = "divider"),
-              
+
               actionButton("generate_template", "Generate Template",
                            class = "btn-primary",
                            style = "width: 100%;",
                            icon = icon("magic")),
-              
-              br(), br(),
-              
-              downloadButton("download_template", "Download Template",
-                             class = "btn-success",
-                             style = "width: 100%")
+
+              p(class = "text-muted small", style = "margin-top: 10px;",
+                "Runs the model solution, identifies the objects it creates, ",
+                "and generates default tests based on their types."),
+
+              uiOutput("solution_status")
           )
         ),
-        
-        # Main content - Preview
-        column(
-          width = 9,
-          
+
+        # Main content area
+        main_column(
           div(class = "panel-section",
-              h4(icon("file-code"), " Generated Template Preview"),
-              p("Preview of the autoharp-compatible solution template with test chunks."),
-              
-              uiOutput("template_status"),
-              
-              div(
-                style = "background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 8px; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; max-height: 600px; overflow-y: auto; white-space: pre-wrap;",
-                verbatimTextOutput("template_preview")
+              h4(icon("list-check"), " Select Objects to Test"),
+              p("Choose the objects to include in the grading template and review the suggested tests."),
+
+              uiOutput("objects_panel"),
+
+              conditionalPanel(
+                condition = "output.template_ready",
+                div(class = "action-row",
+                    actionButton("update_template", "Update Template (optional)",
+                                 class = "btn-info", icon = icon("sync")),
+                    downloadButton("download_template", "Download Template",
+                                   class = "btn-success"),
+                    actionButton("use_template", "Use for Autoharp Grading",
+                                 class = "btn-primary", icon = icon("arrow-right"))
+                )
               )
           ),
-          
-          # tests documentation
+
+          div(class = "panel-section",
+              h4(icon("file-code"), " Generated Template Preview"),
+              p("Preview of the autoharp-compatible template with test chunks."),
+              uiOutput("template_status"),
+              conditionalPanel(
+                condition = "output.template_ready",
+                div(class = "code-preview", verbatimTextOutput("template_preview"))
+              )
+          ),
+
           div(class = "panel-section",
               h4(icon("book"), " Generated Tests Documentation"),
               p("List of all tests that will be generated for each object type."),
-              uiOutput("tests_documentation")
+              tests_documentation_ui()
           )
         )
       )
     ),
-    
-    # Tab 3: Autoharp Grading
+
+    # Tab 2: Autoharp Grading
     tabPanel(
       "Autoharp Grading",
       value = "autoharp",
-      
+
       br(),
-      
+
       fluidRow(
-        column(
-          width = 3,
+        sidebar_column(
           div(class = "sidebar-panel",
-              h4(icon("cogs"), " Autoharp Setup"),
-              
-              p("Use the autoharp render_one function to grade student scripts against a template."),
-              
+              h4(icon("cogs"), " Grading Setup"),
+
+              p("Run automated evaluation on student submissions using a grading template."),
+
               div(class = "divider"),
-              
+
               h5(icon("cog"), " Configuration"),
-              
-              # Template file upload
+
               fileInput(
                 inputId = "autoharp_template_file",
-                label = "Upload Template File (RMD/QMD):",
+                label = "Grading Template (RMD/QMD):",
                 accept = c(".Rmd", ".rmd", ".qmd", ".Qmd"),
                 width = "100%"
               ),
-              
-              textInput(
-                inputId = "autoharp_student_folder",
-                label = "Path to Student Scripts Folder:",
-                value = "sol",
-                placeholder = "sol",
-                width = "100%"
-              ),
-              
-              # Add folder selection button if shinyFiles is available
-              if (SHINYFILES_AVAILABLE) {
-                shinyFiles::shinyDirButton("autoharp_student_folder_select", "Browse...", 
-                                           "Select student scripts folder",
-                                           class = "btn-secondary",
-                                           style = "width: 100%; margin-top: -10px;")
-              } else {
-                NULL
-              },
-              
+              uiOutput("autoharp_template_source"),
+
+              folder_input("autoharp_student_folder", "Path to Student Scripts Folder:",
+                           "autoharp_student_folder_select",
+                           placeholder = "/path/to/student_scripts"),
+
+              folder_input("autoharp_run_folder", "Run Grading Template From (optional):",
+                           "autoharp_run_folder_select",
+                           placeholder = "Defaults to student scripts folder"),
+
+              p(class = "text-muted small",
+                "Student scripts always run from their own folder."),
+
               textInput(
                 inputId = "autoharp_output_folder",
-                label = "Output Directory:",
+                label = "Output Directory (optional):",
                 value = "student_out",
-                placeholder = "student_out",
                 width = "100%"
               ),
-              
-              p(class = "text-muted small", 
-                "Directory for render_one output and session files."),
-              
-              # test pattern input
+
+              uiOutput("output_dir_hint"),
+
               textInput(
                 inputId = "test_pattern",
                 label = "Test Chunk Pattern:",
                 value = "test",
-                placeholder = "test",
                 width = "100%"
               ),
-              
-              p(class = "text-muted small", 
-                "Pattern to identify test chunks in template (default: 'test')."),
-              
-              # Checkbox for permission to install packages
+
+              p(class = "text-muted small",
+                "Pattern to identify test chunks in the template (default: 'test')."),
+
               checkboxInput(
                 inputId = "permission_to_install",
                 label = "Allow package installation during grading",
                 value = FALSE,
                 width = "100%"
               ),
-              
-              p(class = "text-muted small", 
-                "If checked, render_one will install missing packages automatically."),
-              
+
+              p(class = "text-muted small",
+                "If checked, the app will install any packages the student scripts need that are missing."),
+
+              checkboxInput(
+                inputId = "continue_on_error",
+                label = "Continue past errors in student code",
+                value = TRUE,
+                width = "100%"
+              ),
+
+              p(class = "text-muted small",
+                "If checked, the rest of a student's code still runs after an error, so the ",
+                "remaining objects are tested. Unchecked, a script stops at its first error and is marked FAIL."),
+
               div(class = "divider"),
-              
-              actionButton("run_autoharp_grading", "Run Autoharp Grading", 
-                           class = "btn-primary", 
+
+              actionButton("run_autoharp_grading", "Run Automated Grading",
+                           class = "btn-primary",
                            style = "width: 100%;",
                            icon = icon("play")),
-              
+
               br(), br(),
-              
-              downloadButton("download_autoharp_excel", "Download Results as Excel",
+
+              downloadButton("download_autoharp_excel", "Export Results (Excel)",
                              class = "btn-success",
                              style = "width: 100%")
           )
         ),
-        
-        # Main content area
-        column(
-          width = 9,
-          
+
+        main_column(
           # Status messages
           uiOutput("autoharp_status"),
-          
-          # Comprehensive Autoharp Results with Plot Grades
+
           div(class = "panel-section",
-              h4(icon("table"), " Comprehensive Grading Results"),
-              p("Combined results from autoharp render_one and manual plot grades."),
-              DTOutput("autoharp_results")
+              h4(icon("table"), " Grading Results"),
+              p("Evaluation results from the automated checks."),
+              DTOutput("autoharp_results"),
+              uiOutput("plots_detected")
           )
         )
       )
     ),
-    
-    # Tab 4: Plot Grading
+
+    # Tab 3: Plot Grading
     tabPanel(
       "Plot Grading",
       value = "plots",
-      
+
       br(),
-      
+
       fluidRow(
-        column(
-          width = 3,
+        sidebar_column(
           div(class = "sidebar-panel",
               h4(icon("user"), " Student Selection"),
-              
+
               uiOutput("student_selector"),
-              
-              br(),
-              
+
               fluidRow(
-                column(6, actionButton("prev_student", icon("arrow-left"), 
+                column(6, actionButton("prev_student", "Previous", icon = icon("arrow-left"),
                                        class = "btn-secondary",
                                        style = "width: 100%;")),
-                column(6, actionButton("next_student", icon("arrow-right"), 
+                column(6, actionButton("next_student", "Next", icon = icon("arrow-right"),
                                        class = "btn-secondary",
                                        style = "width: 100%;"))
               ),
-              
+
               div(class = "divider"),
-              
-              h5(icon("star"), " Grading"),
-              
-              # Grade input
-              numericInput("plot_grade", "Grade (0-100):", 
-                           value = 0, min = 0, max = 100,
+
+              h5(icon("star"), " Plot Grading"),
+
+              numericInput("plot_grade", "Plot Mark:",
+                           value = NA,
                            width = "100%"),
-              
-              textAreaInput("plot_comments", "Comments:", 
-                            rows = 3, 
+
+              textAreaInput("plot_comments", "Comments:",
+                            rows = 3,
                             placeholder = "Optional feedback...",
                             width = "100%"),
-              
-              actionButton("save_grade", "Save Grade", 
+
+              actionButton("save_grade", "Save Plot Grade",
                            class = "btn-success",
                            style = "width: 100%;",
                            icon = icon("save")),
-              
+
               div(class = "divider"),
-              
+
               h5(icon("tasks"), " Progress"),
               uiOutput("grading_progress")
           )
         ),
-        
-        # Main content area
-        column(
-          width = 9,
-          
-          # Student Plots
+
+        main_column(
           div(class = "panel-section",
-              h4(icon("image"), " Student Plots"),
+              div(class = "panel-heading-row",
+                  h4(icon("image"), " Student Plot"),
+                  div(class = "plot-nav",
+                      actionButton("prev_plot", NULL, icon = icon("chevron-left"),
+                                   class = "btn-secondary btn-sm"),
+                      span(class = "plot-counter", textOutput("plot_counter", inline = TRUE)),
+                      actionButton("next_plot", NULL, icon = icon("chevron-right"),
+                                   class = "btn-secondary btn-sm")
+                  )
+              ),
               uiOutput("plot_display")
           ),
-          
-          # Test Results for current student
+
           div(class = "panel-section",
               h4(icon("clipboard-check"), " Test Results for Selected Student"),
-              p("View all test results (built-in object checks) for the currently selected student."),
+              p("All autoharp test results for the currently selected student."),
+              uiOutput("student_run_summary"),
               DTOutput("student_test_results")
           ),
-          
-          # Plot grades summary
+
           div(class = "panel-section",
-              h4(icon("table"), " Plot Grades Summary"),
-              DTOutput("plot_grades_table")
+              h4(icon("table"), " Consolidated Grading Results"),
+              p("Combined results from the automated checks and manual plot grading."),
+              DTOutput("consolidated_results"),
+              div(class = "action-row",
+                  downloadButton("download_consolidated_excel", "Export Results (Excel)",
+                                 class = "btn-success")
+              )
           )
         )
       )
     )
   ),
-  
+
   # Plot Modal - Global level to ensure proper z-index stacking
   tags$div(
     id = "plotModal",
     class = "plot-modal",
     tags$div(
       class = "plot-modal-content",
-      tags$button(
-        class = "plot-modal-close",
-        onclick = "closePlotModal()",
-        HTML("&times;")
-      ),
+      tags$button(class = "plot-modal-close", onclick = "closePlotModal()", HTML("&times;")),
       tags$h4(id = "modalPlotTitle", style = "margin-bottom: 15px; color: #495057;"),
       tags$img(id = "modalPlotImg", src = "", alt = "Expanded Plot")
     )
   )
 )
 
-# server def
+
+# =========================================
+# Server
+# =========================================
+
 server <- function(input, output, session) {
-  
-  # Constants for knitr temp directories and default figure path.
-  # These are used when knitting solution files to avoid creating stray files
-  # in the app's working directory.
+
+  # knitr figure folders used when knitting the model solution and grading
+  # template, so that no stray figure/ folders are created in the app folder
   KNITR_DEFAULT_FIG_PATH <- "figure/"
   KNITR_SOLN_FIG_DIR     <- file.path(tempdir(), "soln_figs")
-  KNITR_SOLN_FIG_RESTORE <- file.path(tempdir(), "soln_figs_restore")
-  
-  # reactive values to store state
+
   rv <- reactiveValues(
+    # template generation
+    solution_name = NULL,
+    solution_content = NULL,
+    solution_ext = NULL,
     solution_env = NULL,
     solution_objects = NULL,
-    solution_file_content = NULL,
-    solution_file_extension = NULL,  # store original file extension
+    solution_errors = character(0),
+    solution_run_dir = NULL,
+    default_selection = NULL,
+    generated_template = NULL,
+    template_objects = NULL,
+    # autoharp grading
+    autoharp_template = NULL,   # list(name, content, source)
+    autoharp_results = NULL,
     student_files = NULL,
-    grading_results = NULL,
+    student_plots = list(),
+    output_dir = NULL,
+    # plot grading
     plot_grades = NULL,
     current_student_index = 1,
-    student_plots = list(),
-    processing = FALSE,
-    generated_template = NULL,
-    # autoharp grading state
-    autoharp_template_path = NULL,
-    autoharp_student_files = NULL,
-    autoharp_results = NULL,
-    autoharp_processing = FALSE,
-    # folder synchronization flag to prevent circular updates
-    sync_in_progress = FALSE,
+    plot_index = 1,
     # session management
     session_id = NULL,
-    session_loaded = FALSE,
-    restoring_session = FALSE,
-    advancing_student = FALSE,
-    last_save_time = NULL
+    last_save_time = NULL,
+    last_save_file = NULL,
+    last_save_kind = NULL,
+    pending_session_path = NULL
   )
-  
-  # helper function to save current student's grade/comments into rv$plot_grades.
-  save_current_grade <- function() {
-    # skip during session restoration or auto-advance: inputs have stale values
-    if (isTRUE(rv$restoring_session) || isTRUE(rv$advancing_student)) {
-      return(invisible())
-    }
-    if (!is.null(rv$plot_grades) && !is.null(rv$current_student_index)) {
-      if (rv$current_student_index > 0 && rv$current_student_index <= nrow(rv$plot_grades)) {
-        grade_val <- input$plot_grade
-        comment_val <- input$plot_comments
-        rv$plot_grades$grade[rv$current_student_index] <- grade_val
-        rv$plot_grades$comments[rv$current_student_index] <- if (is.null(comment_val)) "" else comment_val
-        # Handle NA values to prevent "missing value where TRUE/FALSE needed"
-        has_grade <- !is.null(grade_val) && !is.na(grade_val) && grade_val > 0
-        has_comments <- !is.null(comment_val) && nchar(trimws(comment_val)) > 0
-        if (has_grade || has_comments) {
-          rv$plot_grades$graded[rv$current_student_index] <- TRUE
-        }
-      }
-    }
-  }
-  
-  # helper function to save session state.
-  # When out_dir is provided (e.g. from autoharp grading), sessions are saved
-  # there.  Otherwise falls back to the Object Testing output folder so there
-  # is a consistent default location.
-  save_session_state <- function(out_dir = NULL) {
+
+  # Non-reactive state: values last copied from Template Generation to the
+  # Autoharp Grading inputs, and whether the plot grade inputs were edited
+  sync_state <- new.env()
+  sync_state$run <- ""
+  sync_state$prefix <- "test"
+  grade_state <- new.env()
+  grade_state$dirty <- FALSE
+
+  # =========================================
+  # Shared helpers
+  # =========================================
+
+  # Knit the model solution in a fresh environment, running it from run_dir
+  # (NULL = knitr's default, the temp folder the file is written to)
+  knit_solution <- function(content, ext, run_dir) {
+    env <- new.env()
+    soln_file <- tempfile(fileext = ext)
+    temp_md <- tempfile(fileext = ".md")
+    writeLines(content, soln_file)
+    old_fig_path <- knitr::opts_chunk$get("fig.path")
+    old_root_dir <- knitr::opts_knit$get("root.dir")
+    knitr::opts_chunk$set(fig.path = file.path(KNITR_SOLN_FIG_DIR, "fig-"))
+    knitr::opts_knit$set(root.dir = run_dir)
+    errors <- character(0)
     tryCatch({
-      # Use the explicitly provided out_dir first, then the Object Testing
-      # output folder, then the hard-coded default.
-      output_dir <- if (!is.null(out_dir) && !is.na(out_dir) && out_dir != "") {
-        out_dir
-      } else if (!is.null(input$output_folder) && !is.na(input$output_folder) && input$output_folder != "") {
-        input$output_folder
-      } else {
-        "grading_output"
-      }
-      
-      # Create output directory if it doesn't exist
-      if (!dir.exists(output_dir)) {
-        dir.create(output_dir, recursive = TRUE)
-      }
-      
-      # Create session subdirectory
-      session_dir <- file.path(output_dir, "sessions")
-      if (!dir.exists(session_dir)) {
-        dir.create(session_dir, recursive = TRUE)
-      }
-      
-      # Generate session ID if not exists
-      if (is.null(rv$session_id)) {
-        rv$session_id <- format(Sys.time(), "session_%Y%m%d_%H%M%S")
-      }
-      
-      # Prepare session data
-      session_data <- list(
-        session_id = rv$session_id,
-        timestamp = Sys.time(),
-        solution_objects = rv$solution_objects,
-        solution_file_content = rv$solution_file_content,
-        solution_file_extension = rv$solution_file_extension,
-        student_files = rv$student_files,
-        grading_results = rv$grading_results,
-        plot_grades = rv$plot_grades,
-        current_student_index = rv$current_student_index,
-        student_plots = rv$student_plots,
-        generated_template = rv$generated_template,
-        autoharp_template_path = rv$autoharp_template_path,
-        autoharp_student_files = rv$autoharp_student_files,
-        autoharp_results = rv$autoharp_results,
-        # Save input values
-        student_folder = input$student_folder,
-        output_folder = output_dir,
-        autoharp_student_folder = input$autoharp_student_folder,
-        autoharp_output_folder = input$autoharp_output_folder,
-        test_pattern = input$test_pattern
-      )
-      
-      # Save to file
-      session_file <- file.path(session_dir, paste0(rv$session_id, ".rds"))
-      saveRDS(session_data, session_file)
+      knitr::knit(soln_file, output = temp_md, envir = env, quiet = TRUE)
+      errors <- extract_knit_errors(readLines(temp_md, warn = FALSE))
+    }, finally = {
+      knitr::opts_chunk$set(
+        fig.path = if (!is.null(old_fig_path)) old_fig_path else KNITR_DEFAULT_FIG_PATH)
+      knitr::opts_knit$set(root.dir = old_root_dir)
+      unlink(c(soln_file, temp_md))
+    })
+    list(env = env, errors = errors)
+  }
+
+  # Folder the model solution is run from in Template Generation (NULL when
+  # none is set: the solution then runs in a temporary folder)
+  solution_run_dir <- function(run_folder) {
+    existing_folder(run_folder)
+  }
+
+  # Generate the grading template from the current object selection
+  build_template <- function() {
+    selected <- isolate(input$selected_objects)
+    if (length(selected) == 0) stop("Select at least one object to test.")
+    prefix <- isolate(input$test_prefix)
+    if (is_blank(prefix)) prefix <- "test"
+    template <- generate_autoharp_template(
+      original_content = rv$solution_content,
+      solution_env = rv$solution_env,
+      objects_to_test = selected,
+      test_prefix = trimws(prefix),
+      include_all_tests = isTRUE(isolate(input$include_all_tests))
+    )
+    rv$generated_template <- template
+    rv$template_objects <- selected
+    template
+  }
+
+  generated_template_name <- function() {
+    base <- if (!is.null(rv$solution_name)) tools::file_path_sans_ext(rv$solution_name) else "solution"
+    ext <- if (!is.null(rv$solution_ext)) rv$solution_ext else ".Rmd"
+    paste0(base, "_autoharp", ext)
+  }
+
+  # Folder where session files are saved: the last grading output folder,
+  # otherwise the output folder implied by the current inputs (or NULL)
+  current_output_dir <- function() {
+    if (!is.null(rv$output_dir)) return(rv$output_dir)
+    resolve_output_dir(input$autoharp_output_folder, input$autoharp_student_folder)
+  }
+
+  # =========================================
+  # Session save / load
+  # =========================================
+
+  session_payload <- function() {
+    if (is.null(rv$session_id)) {
+      rv$session_id <- format(Sys.time(), "session_%Y%m%d_%H%M%S")
+    }
+    list(
+      app = "autoharp_grading_app",
+      version = 2,
+      session_id = rv$session_id,
+      timestamp = Sys.time(),
+      # template generation
+      solution_name = rv$solution_name,
+      solution_content = rv$solution_content,
+      solution_ext = rv$solution_ext,
+      solution_objects = rv$solution_objects,
+      selected_objects = input$selected_objects,
+      generated_template = rv$generated_template,
+      tg_run_folder = input$tg_run_folder,
+      test_prefix = input$test_prefix,
+      include_all_tests = input$include_all_tests,
+      # autoharp grading
+      autoharp_template = rv$autoharp_template,
+      autoharp_student_folder = input$autoharp_student_folder,
+      autoharp_run_folder = input$autoharp_run_folder,
+      autoharp_output_folder = input$autoharp_output_folder,
+      test_pattern = input$test_pattern,
+      permission_to_install = input$permission_to_install,
+      continue_on_error = input$continue_on_error,
+      autoharp_results = rv$autoharp_results,
+      student_files = rv$student_files,
+      student_plots = rv$student_plots,
+      output_dir = rv$output_dir,
+      # plot grading
+      plot_grades = rv$plot_grades,
+      current_student_index = rv$current_student_index
+    )
+  }
+
+  # Save the session to <output folder>/sessions; kind is "auto" or "manual"
+  save_session_state <- function(kind = "auto") {
+    out_dir <- current_output_dir()
+    if (is.null(out_dir)) {
+      return(list(success = FALSE, error = "no output folder"))
+    }
+    tryCatch({
+      session_dir <- file.path(out_dir, "sessions")
+      dir.create(session_dir, recursive = TRUE, showWarnings = FALSE)
+      payload <- session_payload()
+      session_file <- file.path(session_dir, paste0(payload$session_id, ".rds"))
+      saveRDS(payload, session_file)
       rv$last_save_time <- Sys.time()
-      
-      return(list(success = TRUE, file = session_file))
+      rv$last_save_file <- session_file
+      rv$last_save_kind <- kind
+      list(success = TRUE, file = session_file)
     }, error = function(e) {
-      return(list(success = FALSE, error = e$message))
+      list(success = FALSE, error = e$message)
     })
   }
-  
-  # Helper function to load session state
+
+  # Restore a session saved by this app (older session files are mapped
+  # onto the new fields where possible)
   load_session_state <- function(session_file) {
     tryCatch({
-      session_data <- readRDS(session_file)
-      
-      # Guard: prevent save_current_grade and student_folder observer from
-      # clobbering restored data while we are restoring reactive values
-      rv$restoring_session <- TRUE
-      rv$session_loaded <- TRUE
-      
-      # Restore reactive values
-      rv$session_id <- session_data$session_id
-      rv$solution_objects <- session_data$solution_objects
-      rv$solution_file_content <- session_data$solution_file_content
-      rv$solution_file_extension <- session_data$solution_file_extension
-      rv$student_files <- session_data$student_files
-      rv$grading_results <- session_data$grading_results
-      rv$plot_grades <- session_data$plot_grades
-      rv$current_student_index <- session_data$current_student_index
-      rv$student_plots <- session_data$student_plots
-      rv$generated_template <- session_data$generated_template
-      rv$autoharp_template_path <- session_data$autoharp_template_path
-      rv$autoharp_student_files <- session_data$autoharp_student_files
-      rv$autoharp_results <- session_data$autoharp_results
-      
-      # Restore input values (these trigger observers asynchronously)
-      updateTextInput(session, "student_folder", value = session_data$student_folder)
-      updateTextInput(session, "output_folder", value = session_data$output_folder)
-      updateTextInput(session, "autoharp_student_folder", value = session_data$autoharp_student_folder)
-      updateTextInput(session, "autoharp_output_folder", value = session_data$autoharp_output_folder)
-      updateTextInput(session, "test_pattern", value = session_data$test_pattern)
-      
-      # Restore the grade/comment inputs for the current student
-      if (!is.null(session_data$plot_grades) && !is.null(session_data$current_student_index)) {
-        idx <- session_data$current_student_index
-        if (idx > 0 && idx <= nrow(session_data$plot_grades)) {
-          saved_grade <- session_data$plot_grades$grade[idx]
-          saved_comment <- session_data$plot_grades$comments[idx]
-          updateNumericInput(session, "plot_grade",
-                             value = if (is.na(saved_grade)) 0 else saved_grade)
-          updateTextAreaInput(session, "plot_comments",
-                              value = if (is.null(saved_comment)) "" else saved_comment)
-        }
+      s <- readRDS(session_file)
+      if (!is.list(s)) stop("This file is not a grading app session.")
+      pick <- function(...) {
+        for (x in list(...)) if (!is.null(x)) return(x)
+        NULL
       }
-      
-      # Restore solution environment if solution was loaded
-      if (!is.null(rv$solution_file_content)) {
-        temp_env <- new.env()
-        temp_file <- tempfile(fileext = rv$solution_file_extension)
-        writeLines(rv$solution_file_content, temp_file)
-        
-        # Direct knitr output to a tempfile and redirect fig.path to avoid
-        # creating stray files in the app's working directory.
-        temp_md <- tempfile(fileext = ".md")
-        old_fig_path <- knitr::opts_chunk$get("fig.path")
-        knitr::opts_chunk$set(fig.path = file.path(KNITR_SOLN_FIG_RESTORE, "fig-"))
-        tryCatch({
-          knitr::knit(temp_file, output = temp_md, envir = temp_env, quiet = TRUE)
-        }, finally = {
-          knitr::opts_chunk$set(
-            fig.path = if (!is.null(old_fig_path)) old_fig_path else KNITR_DEFAULT_FIG_PATH)
-          if (file.exists(temp_md)) unlink(temp_md)
-        })
-        
-        rv$solution_env <- temp_env
-        unlink(temp_file)
+
+      rv$session_id <- s$session_id
+      rv$last_save_time <- NULL
+      rv$last_save_file <- NULL
+      restore_state$until <- Sys.time() + 3
+
+      # template generation
+      rv$solution_name <- s$solution_name
+      rv$solution_content <- pick(s$solution_content, s$solution_file_content)
+      rv$solution_ext <- pick(s$solution_ext, s$solution_file_extension, ".Rmd")
+      rv$generated_template <- s$generated_template
+      rv$template_objects <- s$selected_objects
+      rv$default_selection <- s$selected_objects
+      rv$solution_env <- NULL
+      rv$solution_errors <- character(0)
+      rv$solution_objects <- NULL
+      if (!is.null(rv$solution_content)) {
+        # sessions saved by earlier versions ran the solution from their
+        # Template Generation student folder when no run folder was set
+        run_dir <- solution_run_dir(s$tg_run_folder)
+        if (is.null(run_dir)) run_dir <- existing_folder(s$tg_student_folder)
+        knitted <- knit_solution(rv$solution_content, rv$solution_ext, run_dir)
+        rv$solution_env <- knitted$env
+        rv$solution_errors <- knitted$errors
+        rv$solution_run_dir <- run_dir
+        rv$solution_objects <- pick(s$solution_objects,
+                                    ls(knitted$env)[!grepl("^\\.", ls(knitted$env))])
       }
-      
-      # Clear the restoring flag after a short delay so that any
-      # observers triggered by the updateTextInput calls above still
-      # see the flag.  session$onFlushed runs after the current flush
-      # cycle completes, i.e. after all pending observers have fired.
-      session$onFlushed(function() {
-        rv$restoring_session <- FALSE
-      }, once = TRUE)
-      
-      return(list(success = TRUE, session_id = session_data$session_id, timestamp = session_data$timestamp))
+
+      # autoharp grading
+      rv$autoharp_template <- s$autoharp_template
+      rv$autoharp_results <- s$autoharp_results
+      rv$student_files <- pick(s$student_files, s$autoharp_student_files)
+      rv$student_plots <- pick(s$student_plots, list())
+      rv$output_dir <- s$output_dir
+
+      # plot grading
+      rv$plot_grades <- s$plot_grades
+      idx <- pick(s$current_student_index, 1)
+      rv$current_student_index <- if (!is.null(rv$plot_grades) && idx <= nrow(rv$plot_grades)) idx else 1
+      rv$plot_index <- 1
+
+      # inputs; record the Template Generation values as already synced so
+      # restoring them does not overwrite the restored Autoharp inputs
+      sync_state$run <- pick(s$tg_run_folder, "")
+      sync_state$prefix <- pick(s$test_prefix, "test")
+      updateTextInput(session, "tg_run_folder", value = pick(s$tg_run_folder, ""))
+      updateTextInput(session, "test_prefix", value = pick(s$test_prefix, "test"))
+      updateCheckboxInput(session, "include_all_tests", value = pick(s$include_all_tests, TRUE))
+      updateTextInput(session, "autoharp_student_folder", value = pick(s$autoharp_student_folder, ""))
+      updateTextInput(session, "autoharp_run_folder", value = pick(s$autoharp_run_folder, ""))
+      updateTextInput(session, "autoharp_output_folder", value = pick(s$autoharp_output_folder, "student_out"))
+      updateTextInput(session, "test_pattern", value = pick(s$test_pattern, "test"))
+      updateCheckboxInput(session, "permission_to_install", value = pick(s$permission_to_install, FALSE))
+      updateCheckboxInput(session, "continue_on_error", value = pick(s$continue_on_error, TRUE))
+      push_grade_inputs()
+
+      list(success = TRUE, session_id = s$session_id)
     }, error = function(e) {
-      return(list(success = FALSE, error = e$message))
+      list(success = FALSE, error = e$message)
     })
   }
-  
-  # Setup shinyFiles folder choosers if available
+
+  output$autosave_status <- renderUI({
+    if (is.null(rv$last_save_file)) {
+      div(class = "autosave-status",
+          icon("info-circle"),
+          " Progress is auto-saved after grading and each plot grade")
+    } else {
+      label <- if (identical(rv$last_save_kind, "manual")) "Session saved:" else "Progress auto-saved:"
+      div(class = "autosave-status", title = rv$last_save_file,
+          icon("check-circle"),
+          paste0(" ", label, " ", basename(rv$last_save_file), " (",
+                 format(rv$last_save_time, "%H:%M:%S"), ")"))
+    }
+  })
+
+  # Current session details (as in the original Session tab)
+  session_info_ui <- function() {
+    if (is.null(rv$session_id)) {
+      return(div(class = "status-alert status-info",
+                 icon("info-circle"), " No active session. Start grading to create a new session."))
+    }
+    div(class = "well session-info",
+        h5(icon("info-circle"), " Current Session Info"),
+        tags$p(tags$strong("Session ID: "), rv$session_id),
+        tags$p(tags$strong("Last Saved: "),
+               if (!is.null(rv$last_save_time)) format(rv$last_save_time, "%Y-%m-%d %H:%M:%S") else "Not yet saved"),
+        if (!is.null(rv$last_save_file)) tags$p(tags$strong("Saved To: "), tags$code(rv$last_save_file)),
+        tags$p(tags$strong("Students: "), if (!is.null(rv$student_files)) length(rv$student_files) else 0),
+        tags$p(tags$strong("Graded: "), if (!is.null(rv$plot_grades)) sum(rv$plot_grades$graded) else 0)
+    )
+  }
+
+  observeEvent(input$save_session_btn, {
+    result <- save_session_state(kind = "manual")
+    if (result$success) {
+      showNotification(paste0("Session saved to: ", result$file), type = "message", duration = 6)
+    } else if (identical(result$error, "no output folder")) {
+      showModal(modalDialog(
+        title = tagList(icon("save"), " Save Session"),
+        p("The session can't be saved to an output folder yet, because no student scripts ",
+          "folder (or absolute output directory) has been set."),
+        p("You can download the session file instead and load it later."),
+        session_info_ui(),
+        footer = tagList(
+          modalButton("Cancel"),
+          downloadButton("download_session", "Download Session (.rds)", class = "btn-success")
+        ),
+        easyClose = TRUE
+      ))
+    } else {
+      showNotification(paste0("Error saving session: ", result$error), type = "error", duration = 10)
+    }
+  })
+
+  output$download_session <- downloadHandler(
+    filename = function() {
+      paste0(if (!is.null(rv$session_id)) rv$session_id else format(Sys.time(), "session_%Y%m%d_%H%M%S"), ".rds")
+    },
+    content = function(file) {
+      saveRDS(session_payload(), file)
+    }
+  )
+
+  observeEvent(input$load_session_btn, {
+    rv$pending_session_path <- NULL
+    showModal(modalDialog(
+      title = tagList(icon("folder-open"), " Load Previous Session"),
+      p("Resume a previous grading session by uploading a session file. Session files are saved in the ",
+        tags$code("sessions"), " folder inside the grading output directory."),
+      fileInput("session_file", "Upload Session File (.rds):", accept = ".rds", width = "100%"),
+      uiOutput("session_file_status"),
+      session_info_ui(),
+      footer = tagList(
+        modalButton("Cancel"),
+        actionButton("confirm_load_session", "Load Session", icon = icon("upload"),
+                     class = "btn-primary")
+      ),
+      easyClose = TRUE
+    ))
+  })
+
+  observeEvent(input$session_file, {
+    rv$pending_session_path <- input$session_file$datapath
+  })
+
+  output$session_file_status <- renderUI({
+    req(rv$pending_session_path, input$session_file)
+    div(class = "status-alert status-info",
+        icon("info-circle"), paste(" Selected:", input$session_file$name))
+  })
+
+  observeEvent(input$confirm_load_session, {
+    if (is.null(rv$pending_session_path)) {
+      showNotification("Choose a session file first.", type = "warning")
+      return()
+    }
+    result <- load_session_state(rv$pending_session_path)
+    removeModal()
+    if (result$success) {
+      showNotification(paste0("Session loaded successfully! ID: ", result$session_id),
+                       type = "message", duration = 5)
+    } else {
+      showNotification(paste0("Error loading session: ", result$error), type = "error", duration = 10)
+    }
+  })
+
+  # =========================================
+  # Folder browsers
+  # =========================================
+
   if (SHINYFILES_AVAILABLE) {
     # Allow browsing from root directory (/) for Unix-like systems
     # or from all available volumes for Windows
     roots <- if (.Platform$OS.type == "windows") {
-      # getVolumes() returns a function that, when called, returns the volumes
-      # This double call pattern is by design in the shinyFiles package
       shinyFiles::getVolumes()()
     } else {
       c(root = "/", home = path.expand("~"))
     }
-    
-    # Setup folder choosers
-    shinyFiles::shinyDirChoose(input, "student_folder_select", roots = roots, session = session)
-    shinyFiles::shinyDirChoose(input, "autoharp_student_folder_select", roots = roots, session = session)
-    
-    # Observer for Object Testing tab folder selection
-    observeEvent(input$student_folder_select, {
-      if (!is.integer(input$student_folder_select)) {
-        selected_path <- shinyFiles::parseDirPath(roots, input$student_folder_select)
-        if (length(selected_path) > 0) {
-          updateTextInput(session, "student_folder", value = selected_path)
-          # Also update the Autoharp Grading tab folder input
-          updateTextInput(session, "autoharp_student_folder", value = selected_path)
+    folder_buttons <- c(
+      tg_run_folder_select = "tg_run_folder",
+      autoharp_student_folder_select = "autoharp_student_folder",
+      autoharp_run_folder_select = "autoharp_run_folder"
+    )
+    lapply(names(folder_buttons), function(button_id) {
+      shinyFiles::shinyDirChoose(input, button_id, roots = roots, session = session)
+      observeEvent(input[[button_id]], {
+        if (!is.integer(input[[button_id]])) {
+          selected_path <- shinyFiles::parseDirPath(roots, input[[button_id]])
+          if (length(selected_path) > 0) {
+            updateTextInput(session, folder_buttons[[button_id]], value = selected_path)
+          }
         }
-      }
-    })
-    
-    # Observer for Autoharp Grading tab folder selection
-    observeEvent(input$autoharp_student_folder_select, {
-      if (!is.integer(input$autoharp_student_folder_select)) {
-        selected_path <- shinyFiles::parseDirPath(roots, input$autoharp_student_folder_select)
-        if (length(selected_path) > 0) {
-          updateTextInput(session, "autoharp_student_folder", value = selected_path)
-        }
-      }
+      })
     })
   }
-  
-  # Session management observers
-  
-  # Load session button
-  observeEvent(input$load_session, {
-    req(input$session_file)
-    
-    result <- load_session_state(input$session_file$datapath)
-    
-    if (result$success) {
-      showNotification(
-        paste0("Session loaded successfully! ID: ", result$session_id),
-        type = "message",
-        duration = 5
-      )
-    } else {
-      showNotification(
-        paste0("Error loading session: ", result$error),
-        type = "error",
-        duration = 10
-      )
-    }
-  })
-  
-  # Manual save session button
-  observeEvent(input$save_session_manual, {
-    result <- save_session_state()
-    
-    if (result$success) {
-      showNotification(
-        paste0("Session saved to: ", result$file),
-        type = "message",
-        duration = 5
-      )
-    } else {
-      showNotification(
-        paste0("Error saving session: ", result$error),
-        type = "error",
-        duration = 10
-      )
-    }
-  })
-  
-  # Session status output
-  output$session_status <- renderUI({
-    if (!is.null(input$session_file)) {
-      tags$div(
-        class = "alert alert-info",
-        icon("info-circle"),
-        paste(" Selected:", input$session_file$name)
-      )
-    }
-  })
-  
-  # Current session info output
-  output$current_session_info <- renderUI({
-    if (!is.null(rv$session_id)) {
-      tags$div(
-        tags$p(tags$strong("Session ID: "), rv$session_id),
-        if (!is.null(rv$last_save_time)) {
-          tags$p(tags$strong("Last Saved: "), format(rv$last_save_time, "%Y-%m-%d %H:%M:%S"))
-        } else {
-          tags$p(tags$strong("Last Saved: "), "Not yet saved")
-        },
-        tags$p(tags$strong("Students: "), if (!is.null(rv$student_files)) length(rv$student_files) else 0),
-        tags$p(tags$strong("Graded: "), if (!is.null(rv$plot_grades)) sum(rv$plot_grades$graded) else 0)
-      )
-    } else {
-      tags$div(
-        class = "alert alert-secondary",
-        icon("info-circle"),
-        " No active session. Start grading to create a new session."
-      )
-    }
-  })
-  
-  # load soln template when uploaded
-  observeEvent(input$solution_file, {
-    req(input$solution_file)
-    
-    tryCatch({
-      # create temp env and knit solution
-      temp_env <- new.env()
-      temp_file <- input$solution_file$datapath
-      
-      # Store the original file extension (detect from filename)
-      # Preserve the original case-sensitive extension (.qmd or .Rmd)
-      file_ext_lower <- tolower(tools::file_ext(input$solution_file$name))
-      if (file_ext_lower == "qmd") {
-        rv$solution_file_extension <- ".qmd"
-      } else {
-        # Default to .Rmd for RMD files or any other extension
-        # (already validated by fileInput accept parameter)
-        rv$solution_file_extension <- ".Rmd"
+
+  # =========================================
+  # Template Generation -> Autoharp Grading sync
+  # =========================================
+
+  # Copy a Template Generation value to its Autoharp Grading input, unless the
+  # Autoharp input was changed by hand (it no longer matches the last copy)
+  sync_to_autoharp <- function(tg_id, autoharp_id, key) {
+    observeEvent(input[[tg_id]], {
+      new_value <- input[[tg_id]]
+      old_value <- sync_state[[key]]
+      if (identical(new_value, old_value)) return()
+      autoharp_value <- input[[autoharp_id]]
+      if (is_blank(autoharp_value) || identical(autoharp_value, old_value)) {
+        updateTextInput(session, autoharp_id, value = new_value)
       }
-      
-      # read the original file content for template generation
-      rv$solution_file_content <- readLines(temp_file, warn = FALSE)
-      
-      # Knit the solution to populate the environment.
-      # Direct output to a tempfile and redirect fig.path to avoid creating
-      # stray .md files or figure/ folders in the app's working directory.
-      temp_md <- tempfile(fileext = ".md")
-      old_fig_path <- knitr::opts_chunk$get("fig.path")
-      knitr::opts_chunk$set(fig.path = file.path(KNITR_SOLN_FIG_DIR, "fig-"))
-      tryCatch({
-        knitr::knit(temp_file, output = temp_md, quiet = TRUE, envir = temp_env)
-      }, finally = {
-        knitr::opts_chunk$set(
-          fig.path = if (!is.null(old_fig_path)) old_fig_path else KNITR_DEFAULT_FIG_PATH)
-        if (file.exists(temp_md)) unlink(temp_md)
-      })
-      
-      rv$solution_env <- temp_env
-      
-      # get all objects created in the solution (excluding internal ones)
-      all_objects <- ls(temp_env, all.names = FALSE)
-      # filter out functions that start with dots and internal objects
-      rv$solution_objects <- all_objects[!grepl("^\\.", all_objects)]
-      
-      showNotification("Solution template loaded successfully!", type = "message")
-    }, error = function(e) {
-      showNotification(paste("Error loading solution:", e$message), type = "error")
-    })
-  })
-  
-  # render object selector based on solution objects
-  output$object_selector <- renderUI({
-    req(rv$solution_objects)
-    
-    checkboxGroupInput(
-      inputId = "selected_objects",
-      label = "Select Objects to Test:",
-      choices = rv$solution_objects,
-      selected = rv$solution_objects
-    )
-  })
-  
-  # load student files when folder path is provided
-  observeEvent(input$student_folder, {
-    req(input$student_folder)
-    
-    # if a session was just loaded, skip the entire observer.
-    # load_session_state already restored student_files, plot_grades, etc.
-    # the updateTextInput that triggered this observer was only meant to
-    # sync the UI text; not to re-scan the folder and wipe state.
-    if (isTRUE(rv$session_loaded)) {
-      rv$session_loaded <- FALSE
-      return(invisible())
-    }
-    
-    folder_path <- input$student_folder
-    
-    # sync the folder path to Autoharp Grading tab if it's different.
-    # Keep rv$sync_in_progress TRUE until the autoharp_student_folder observer
-    # fires and clears it, so the autoharp observer can detect and skip the
-    # programmatic update (avoiding a double notification).
-    if (!rv$sync_in_progress &&
-        !is.null(input$autoharp_student_folder) &&
-        input$autoharp_student_folder != folder_path) {
-      rv$sync_in_progress <- TRUE
-      updateTextInput(session, "autoharp_student_folder", value = folder_path)
-      # Do NOT reset rv$sync_in_progress here; the autoharp_student_folder
-      # observer will clear it when it fires.
-    }
-    
-    if (dir.exists(folder_path)) {
-      # get all R, Rmd, and QMD files
-      files <- list.files(folder_path,
-                          pattern = "\\.(R|r|Rmd|rmd|qmd|Qmd)$",
-                          full.names = TRUE)
-      
-      if (length(files) > 0) {
-        rv$student_files <- files
-        
-        # fresh folder selection: initialize empty plot grades
-        rv$plot_grades <- data.frame(
-          student_file = basename(files),
-          grade = rep(NA_real_, length(files)),
-          comments = rep("", length(files)),
-          graded = rep(FALSE, length(files)),
-          stringsAsFactors = FALSE
-        )
-        
-        showNotification(paste("Found", length(files), "student files"), type = "message")
-      } else {
-        showNotification("No R, Rmd, or QMD files found in the specified folder", type = "warning")
-      }
-    } else {
-      showNotification("Folder does not exist", type = "error")
-    }
-  })
-  
-  # Mirror of the student_folder observer for the Autoharp Grading tab.
-  # Shows the "Found xxx student files" notification when the autoharp student
-  # folder path is entered directly (not via sync from the Object Testing tab).
-  observeEvent(input$autoharp_student_folder, {
-    req(input$autoharp_student_folder)
-    
-    # Skip if a session is being restored (updateTextInput already set the value)
-    if (isTRUE(rv$restoring_session)) return(invisible())
-    
-    # If the Object Testing tab synced this input programmatically, clear the
-    # flag and skip - the Object Testing observer already showed a notification.
-    if (isTRUE(rv$sync_in_progress)) {
-      rv$sync_in_progress <- FALSE
-      return(invisible())
-    }
-    
-    folder_path <- input$autoharp_student_folder
-    
-    if (dir.exists(folder_path)) {
-      # Look for Rmd/QMD files (autoharp only processes these)
-      files <- list.files(folder_path,
-                          pattern = "\\.(R|Rmd|rmd|qmd|Qmd)$",
-                          full.names = TRUE)
-      
-      if (length(files) > 0) {
-        rv$autoharp_student_files <- files
-        showNotification(paste("Found", length(files), "student files"), type = "message")
-      } else {
-        showNotification("No Rmd or QMD files found in the specified folder", type = "warning")
-      }
-    } else {
-      showNotification("Folder does not exist", type = "error")
-    }
-  })
-  
-  # run automated grading
-  observeEvent(input$run_grading, {
-    req(rv$solution_env)
-    req(rv$student_files)
-    req(input$selected_objects)
-    
-    rv$processing <- TRUE
-    
-    # create progress indicator
-    withProgress(message = "Grading students...", value = 0, {
-      
-      results_list <- list()
-      student_plots_list <- list()
-      n_students <- length(rv$student_files)
-      
-      # Get output directory from input or use default
-      output_dir <- if (!is.null(input$output_folder) && !is.na(input$output_folder) && input$output_folder != "") {
-        input$output_folder
-      } else {
-        "grading_output"
-      }
-      
-      # Create output directory if it doesn't exist
-      if (!dir.exists(output_dir)) {
-        dir.create(output_dir, recursive = TRUE)
-      }
-      
-      # create a plots output directory
-      plots_output_dir <- file.path(output_dir, "student_plots")
-      if (!dir.exists(plots_output_dir)) {
-        dir.create(plots_output_dir, recursive = TRUE)
-      }
-      
-      for (i in seq_along(rv$student_files)) {
-        student_file <- rv$student_files[i]
-        student_name <- basename(student_file)
-        student_base <- tools::file_path_sans_ext(student_name)
-        
-        incProgress(1/n_students, detail = paste("Processing", student_name))
-        
-        # create student env
-        student_env <- new.env()
-        
-        tryCatch({
-          if (grepl("\\.(Rmd|rmd|qmd|Qmd)$", student_file)) {
-            # for Rmd and QMD files, use knitr::knit to generate plots in a known location
-            # create student-specific output directory for plots
-            student_plot_dir <- file.path(plots_output_dir, student_base)
-            if (!dir.exists(student_plot_dir)) {
-              dir.create(student_plot_dir, recursive = TRUE)
-            }
-            
-            # Snapshot knitr chunk options so they can be restored regardless of
-            # whether knitting succeeds or fails (tryCatch finally block).
-            old_opts <- list(
-              fig.path = knitr::opts_chunk$get("fig.path"),
-              dev = knitr::opts_chunk$get("dev"),
-              error = knitr::opts_chunk$get("error")
-            )
-            
-            # Redirect figures to the student-specific directory and allow
-            # chunks to continue past errors.
-            knitr::opts_chunk$set(
-              fig.path = file.path(student_plot_dir, "fig-"),
-              dev = "png",
-              error = TRUE  # Continue knitting even if a chunk has errors
-            )
-            
-            # knit to temporary file but keep figure output in student_plot_dir
-            temp_output <- tempfile(fileext = ".md")
-            tryCatch({
-              knitr::knit(student_file, output = temp_output, quiet = TRUE, envir = student_env)
-            }, finally = {
-              # Always restore knitr options and remove the temp md file
-              knitr::opts_chunk$set(
-                fig.path = if (!is.null(old_opts$fig.path)) old_opts$fig.path else KNITR_DEFAULT_FIG_PATH,
-                dev = if (!is.null(old_opts$dev)) old_opts$dev else "png",
-                error = if (!is.null(old_opts$error)) old_opts$error else FALSE
-              )
-              if (file.exists(temp_output)) unlink(temp_output)
-            })
-          } else {
-            # wrap each expression in try-catch by reading and evaluating separately
-            source_with_trycatch(student_file, student_env)
-          }
-          
-          # run tests on selected objects
-          student_results <- run_object_tests(
-            student_env = student_env,
-            solution_env = rv$solution_env,
-            objects_to_test = input$selected_objects
-          )
-          
-          student_results$student_file <- student_name
-          results_list[[i]] <- student_results
-          
-          # collect any plots generated from the student plot directory
-          student_plots_list[[student_name]] <- collect_student_plots(student_file, plots_output_dir)
-          
-        }, error = function(e) {
-          # If there's an error, record it
-          error_result <- data.frame(
-            student_file = student_name,
-            object = "ERROR",
-            test = "Execution",
-            result = "FAIL",
-            details = e$message,
-            stringsAsFactors = FALSE
-          )
-          results_list[[i]] <- error_result
-        })
-      }
-      
-      # combine all results
-      rv$grading_results <- bind_test_results(results_list)
-      rv$student_plots <- student_plots_list
-      rv$processing <- FALSE
-    })
-    
-    # Auto-save session after grading
-    save_result <- save_session_state()
-    if (save_result$success) {
-      showNotification(
-        paste0("Grading complete! Session auto-saved to: ", basename(save_result$file)),
-        type = "message"
-      )
-    } else {
-      showNotification("Grading complete!", type = "message")
-    }
-  })
-  
-  # grading status output
-  output$grading_status <- renderUI({
-    if (rv$processing) {
-      tags$div(
-        class = "alert alert-info",
-        "Processing student submissions..."
-      )
-    } else if (!is.null(rv$grading_results)) {
-      n_students <- length(unique(rv$grading_results$student_file))
-      n_tests <- nrow(rv$grading_results)
-      n_passed <- sum(rv$grading_results$result == "PASS", na.rm = TRUE)
-      
-      tags$div(
-        class = "alert alert-success",
-        paste("Completed:", n_students, "students,", n_tests, "tests run,", 
-              n_passed, "passed")
-      )
-    }
-  })
-  
-  # grading results table (Summary)
-  output$grading_results <- renderDT({
-    req(rv$grading_results)
-    
-    # create a summary table using base R
-    results <- rv$grading_results
-    
-    # asggregate by student_file and object
-    summary_list <- by(results, list(results$student_file, results$object), function(x) {
-      data.frame(
-        Student = unique(x$student_file),
-        Object = unique(x$object),
-        `Tests Run` = nrow(x),
-        Passed = sum(x$result == "PASS", na.rm = TRUE),
-        Failed = sum(x$result == "FAIL", na.rm = TRUE),
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-    })
-    
-    summary_df <- do.call(rbind, summary_list)
-    rownames(summary_df) <- NULL
-    
-    summary_df$`Pass Rate` <- paste0(round(summary_df$Passed / summary_df$`Tests Run` * 100, 1), "%")
-    
-    datatable(
-      summary_df,
-      options = list(
-        pageLength = 10,
-        scrollX = TRUE,
-        dom = 'Bfrtip',
-        ordering = TRUE
-      ),
-      rownames = FALSE,
-      class = 'cell-border stripe hover'
-    )
-  })
-  
-  # detailed test results
-  output$detailed_results <- renderDT({
-    req(rv$grading_results)
-    
-    failed <- rv$grading_results[rv$grading_results$result == "FAIL", 
-                                 c("student_file", "object", "test", "details")]
-    
-    if (nrow(failed) > 0) {
-      colnames(failed) <- c("Student", "Object", "Test", "Details")
-      datatable(
-        failed,
-        options = list(
-          pageLength = 10,
-          scrollX = TRUE,
-          scrollY = "300px",
-          dom = 'Bfrtip',
-          ordering = TRUE
-        ),
-        rownames = FALSE,
-        class = 'cell-border stripe hover'
-      )
-    } else {
-      # Return empty datatable with message
-      datatable(
-        data.frame(Message = "No failed tests! All tests passed."),
-        options = list(dom = 't'),
-        rownames = FALSE
-      )
-    }
-  })
-  
-  # download handler for CSV
-  output$download_csv <- downloadHandler(
-    filename = function() {
-      paste0("grading_results_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv")
-    },
-    content = function(file) {
-      req(rv$grading_results)
-      
-      # combine object test results with plot grades using base R
-      results <- rv$grading_results
-      
-      # agg by student_file
-      summary_list <- by(results, results$student_file, function(x) {
-        data.frame(
-          student_file = unique(x$student_file),
-          total_tests = nrow(x),
-          tests_passed = sum(x$result == "PASS", na.rm = TRUE),
-          tests_failed = sum(x$result == "FAIL", na.rm = TRUE),
-          stringsAsFactors = FALSE
-        )
-      })
-      
-      object_summary <- do.call(rbind, summary_list)
-      rownames(object_summary) <- NULL
-      object_summary$object_score <- round(object_summary$tests_passed / object_summary$total_tests * 100, 2)
-      
-      if (!is.null(rv$plot_grades)) {
-        # merge with plot grades
-        plot_subset <- rv$plot_grades[, c("student_file", "grade", "comments")]
-        names(plot_subset)[2:3] <- c("plot_grade", "plot_comments")
-        
-        final_results <- merge(object_summary, plot_subset, 
-                               by = "student_file", all.x = TRUE)
-      } else {
-        final_results <- object_summary
-      }
-      
-      write.csv(final_results, file, row.names = FALSE)
-    }
+      sync_state[[key]] <- new_value
+    }, ignoreInit = TRUE)
+  }
+  sync_to_autoharp("tg_run_folder", "autoharp_run_folder", "run")
+  sync_to_autoharp("test_prefix", "test_pattern", "prefix")
+
+  # =========================================
+  # Folder checks: live status lines and "Found N student files" messages
+  # =========================================
+
+  # Folder inputs, debounced so checks run once typing pauses
+  folder_values <- list(
+    autoharp_student_folder = debounce(reactive(input$autoharp_student_folder), 600),
+    tg_run_folder = debounce(reactive(input$tg_run_folder), 600),
+    autoharp_run_folder = debounce(reactive(input$autoharp_run_folder), 600)
   )
-  
-  # stu selector for plot grading
-  output$student_selector <- renderUI({
-    req(rv$student_files)
-    
-    selectInput(
-      inputId = "current_student",
-      label = "Select Student:",
-      choices = setNames(
-        seq_along(rv$student_files),
-        basename(rv$student_files)
-      ),
-      selected = rv$current_student_index
-    )
-  })
-  
-  # update current student index when selector changes
-  observeEvent(input$current_student, {
-    # save current student's grade/comments before switching
-    # save_current_grade checks advancing_student/restoring_session internally
-    save_current_grade()
-    
-    rv$current_student_index <- as.integer(input$current_student)
-    
-    # clear the advancing flag here: this is the observer that the flag
-    # was protecting against. Now that it has fired, it's safe to clear
-    if (isTRUE(rv$advancing_student)) {
-      rv$advancing_student <- FALSE
-    }
-  })
-  
-  # update grade inputs when student changes
-  observeEvent(rv$current_student_index, {
-    req(rv$plot_grades)
-    req(rv$current_student_index)
-    
-    # Bounds checking
-    if (rv$current_student_index > 0 && rv$current_student_index <= nrow(rv$plot_grades)) {
-      # Get saved values for current student
-      current_grade <- rv$plot_grades$grade[rv$current_student_index]
-      current_comments <- rv$plot_grades$comments[rv$current_student_index]
-      
-      # Update inputs to show saved values
-      updateNumericInput(session, "plot_grade", value = current_grade)
-      updateTextAreaInput(session, "plot_comments", value = current_comments)
-    }
-  })
-  
-  # prev student button
-  observeEvent(input$prev_student, {
-    if (rv$current_student_index > 1) {
-      # Save current student's grade/comments before switching
-      save_current_grade()
-      
-      rv$advancing_student <- TRUE
-      rv$current_student_index <- rv$current_student_index - 1
-      updateSelectInput(session, "current_student",
-                        selected = rv$current_student_index)
-    }
-  })
-  
-  # next student button
-  observeEvent(input$next_student, {
-    req(rv$student_files)
-    if (rv$current_student_index < length(rv$student_files)) {
-      # Save current student's grade/comments before switching
-      save_current_grade()
-      
-      rv$advancing_student <- TRUE
-      rv$current_student_index <- rv$current_student_index + 1
-      updateSelectInput(session, "current_student",
-                        selected = rv$current_student_index)
-    }
-  })
-  
-  # plot display
-  output$plot_display <- renderUI({
-    req(rv$student_files)
-    req(rv$current_student_index)
-    
-    student_name <- basename(rv$student_files[rv$current_student_index])
-    
-    if (!is.null(rv$student_plots) && student_name %in% names(rv$student_plots)) {
-      plots <- rv$student_plots[[student_name]]
-      
-      if (length(plots) > 0) {
-        # display all plots for this student using base64 encoding
-        plot_tags <- lapply(seq_along(plots), function(i) {
-          plot_path <- plots[i]
-          if (file.exists(plot_path)) {
-            # read file and encode as base64
-            img_data <- base64enc::base64encode(plot_path)
-            # determine MIME type
-            ext <- tolower(tools::file_ext(plot_path))
-            mime_type <- switch(ext,
-                                "png" = "image/png",
-                                "jpg" = "image/jpeg",
-                                "jpeg" = "image/jpeg",
-                                "gif" = "image/gif",
-                                "svg" = "image/svg+xml",
-                                "image/png")
-            img_src <- paste0("data:", mime_type, ";base64,", img_data)
-            plot_title <- paste("Plot", i)
-            # Create unique ID for this plot's data
-            plot_id <- paste0("plot_", i, "_", rv$current_student_index)
-            
-            tags$div(
-              class = "plot-container",
-              tags$button(
-                class = "expand-icon",
-                `data-img-src` = img_src,
-                `data-plot-title` = plot_title,
-                onclick = "openPlotModalFromButton(this)",
-                title = "Expand plot",
-                shiny::icon("expand")
-              ),
-              tags$img(src = img_src, style = "max-width: 300px; height: auto;"),
-              tags$p(plot_title, style = "text-align: center; margin-top: 5px; font-weight: bold;")
-            )
-          } else {
-            tags$div(
-              class = "alert alert-warning",
-              paste("Plot file not found:", plot_path)
-            )
-          }
-        })
-        
-        do.call(tagList, plot_tags)
-      } else {
-        tags$div(
-          class = "alert alert-info",
-          tags$i(class = "fa fa-info-circle"),
-          " No plots found for this student. Run grading first to generate plots."
-        )
-      }
+
+  # Status line under a student scripts folder input
+  student_folder_status <- function(value) {
+    if (is_blank(value)) return(NULL)
+    info <- folder_info(value)
+    if (!info$exists) {
+      div(class = "folder-status folder-error",
+          icon("times-circle"), " Folder does not exist",
+          div(class = "folder-path", info$path))
+    } else if (length(info$files) == 0) {
+      div(class = "folder-status folder-warning",
+          icon("exclamation-triangle"), " No R, Rmd, or QMD files found in this folder",
+          div(class = "folder-path", info$path))
     } else {
-      tags$div(
-        class = "alert alert-warning",
-        tags$i(class = "fa fa-exclamation-triangle"),
-        " Run automated grading first to collect student plots."
-      )
+      n <- length(info$files)
+      div(class = "folder-status folder-ok",
+          icon("check-circle"),
+          paste0(" Found ", n, " student file", if (n != 1) "s", " (", file_type_summary(info$files), ")"),
+          div(class = "folder-path", info$path))
     }
-  })
-  
-  # Student test results for Plot Grading tab
-  output$student_test_results <- renderDT({
-    req(rv$grading_results)
-    req(rv$student_files)
-    req(rv$current_student_index)
-    
-    student_name <- basename(rv$student_files[rv$current_student_index])
-    
-    # filter results for current student
-    student_results <- rv$grading_results[rv$grading_results$student_file == student_name, ]
-    
-    if (nrow(student_results) > 0) {
-      # select and rename columns for display
-      display_df <- student_results[, c("object", "test", "result", "details")]
-      colnames(display_df) <- c("Object", "Test", "Result", "Details")
-      
-      datatable(
-        display_df,
-        options = list(
-          pageLength = 10,
-          scrollX = TRUE,
-          scrollY = "300px",
-          dom = 'Bfrtip',
-          ordering = TRUE
-        ),
-        rownames = FALSE,
-        class = 'cell-border stripe hover'
-      ) %>%
-        DT::formatStyle(
-          'Result',
-          backgroundColor = DT::styleEqual(
-            c('PASS', 'FAIL', 'SKIP', 'INFO'),
-            c('#d4edda', '#f8d7da', '#fff3cd', '#d1ecf1')
-          )
-        )
+  }
+
+  # Status line under a "run from" folder input; blank_text explains what
+  # happens when the field is left empty
+  run_folder_status <- function(value, blank_text) {
+    if (is_blank(value)) {
+      return(div(class = "folder-status folder-muted",
+                 icon("info-circle"), paste0(" ", blank_text)))
+    }
+    info <- folder_info(value)
+    if (!info$exists) {
+      div(class = "folder-status folder-error",
+          icon("times-circle"), " Folder does not exist",
+          div(class = "folder-path", info$path))
     } else {
-      datatable(
-        data.frame(Message = "No test results available for this student. Run automated grading first."),
-        options = list(dom = 't'),
-        rownames = FALSE
-      )
+      div(class = "folder-status folder-ok",
+          icon("check-circle"), " Folder found",
+          div(class = "folder-path", info$path))
     }
-  })
-  
-  # save plot grade
-  observeEvent(input$save_grade, {
-    req(rv$plot_grades)
-    req(rv$current_student_index)
-    
-    grade_val <- input$plot_grade
-    comment_val <- input$plot_comments
-    
-    # safely store grade (may be NA from empty numeric input)
-    rv$plot_grades$grade[rv$current_student_index] <- grade_val
-    rv$plot_grades$comments[rv$current_student_index] <- if (is.null(comment_val)) "" else comment_val
-    
-    # mark as graded: the user explicitly clicked "Save Grade"
-    rv$plot_grades$graded[rv$current_student_index] <- TRUE
-    
-    message("[save_grade] Student ", rv$current_student_index,
-            " (", rv$plot_grades$student_file[rv$current_student_index], ")",
-            " grade=", grade_val, " comments='", comment_val, "'",
-            " graded=TRUE")
-    message("[save_grade] plot_grades snapshot: ")
-    message(paste(capture.output(print(rv$plot_grades)), collapse = "\n"))
-    
-    # Auto-save session to disk immediately
-    save_result <- save_session_state()
-    if (save_result$success) {
-      showNotification("Grade saved and session auto-saved!", type = "message")
+  }
+
+  output$autoharp_student_folder_status <- renderUI(student_folder_status(folder_values$autoharp_student_folder()))
+  output$tg_run_folder_status <- renderUI(run_folder_status(
+    folder_values$tg_run_folder(),
+    "No folder set: the solution runs in a temporary folder (fine if it reads no data files)"))
+  output$autoharp_run_folder_status <- renderUI(run_folder_status(
+    folder_values$autoharp_run_folder(), "Using the student scripts folder"))
+
+  # Messages are not shown for values restored from a session
+  restore_state <- new.env()
+  restore_state$until <- Sys.time() - 1
+
+  notify_student_folder <- function(value) {
+    if (is_blank(value) || Sys.time() < restore_state$until) return(invisible())
+    info <- folder_info(value)
+    if (!info$exists) {
+      showNotification("Folder does not exist", type = "error")
+    } else if (length(info$files) == 0) {
+      showNotification("No R, Rmd, or QMD files found in the specified folder", type = "warning")
     } else {
-      showNotification("Grade saved!", type = "message")
+      showNotification(paste("Found", length(info$files), "student files"), type = "message")
     }
-    
-    # Auto-advance to next student.
-    # Set advancing_student flag to prevent save_current_grade() from firing
-    # during the student switch (inputs still show old student's values).
-    if (rv$current_student_index < nrow(rv$plot_grades)) {
-      rv$advancing_student <- TRUE
-      rv$current_student_index <- rv$current_student_index + 1
-      updateSelectInput(session, "current_student",
-                        selected = rv$current_student_index)
-    }
+  }
+
+  observeEvent(folder_values$autoharp_student_folder(), {
+    notify_student_folder(folder_values$autoharp_student_folder())
+  }, ignoreInit = TRUE)
+
+  # =========================================
+  # Tab 1: Template Generation
+  # =========================================
+
+  observeEvent(input$solution_file, {
+    file_ext <- tolower(tools::file_ext(input$solution_file$name))
+    rv$solution_name <- input$solution_file$name
+    rv$solution_ext <- if (file_ext == "qmd") ".qmd" else ".Rmd"
+    rv$solution_content <- readLines(input$solution_file$datapath, warn = FALSE)
+    # a new solution needs to be executed again
+    rv$solution_env <- NULL
+    rv$solution_objects <- NULL
+    rv$solution_errors <- character(0)
+    rv$generated_template <- NULL
+    rv$template_objects <- NULL
+    showNotification(paste0("Solution template loaded successfully! Click 'Generate Template' to run ",
+                            input$solution_file$name, "."),
+                     type = "message")
   })
-  
-  # grading progress
-  output$grading_progress <- renderUI({
-    req(rv$plot_grades)
-    
-    n_graded <- sum(rv$plot_grades$graded)
-    n_total <- nrow(rv$plot_grades)
-    
-    tags$div(
-      tags$h6("Grading Progress"),
-      tags$div(
-        class = "progress",
-        tags$div(
-          class = "progress-bar",
-          role = "progressbar",
-          style = paste0("width: ", round(n_graded/n_total * 100), "%;"),
-          paste0(n_graded, " / ", n_total)
-        )
-      )
-    )
-  })
-  
-  # plot grades table
-  output$plot_grades_table <- renderDT({
-    req(rv$plot_grades)
-    
-    graded_subset <- rv$plot_grades[rv$plot_grades$graded, 
-                                    c("student_file", "grade", "comments")]
-    
-    if (nrow(graded_subset) > 0) {
-      colnames(graded_subset) <- c("Student", "Grade", "Comments")
-      datatable(
-        graded_subset,
-        options = list(
-          pageLength = 10,
-          scrollX = TRUE,
-          dom = 'Bfrtip',
-          ordering = TRUE
-        ),
-        rownames = FALSE,
-        class = 'cell-border stripe hover'
-      )
-    } else {
-      datatable(
-        data.frame(Message = "No plots have been graded yet."),
-        options = list(dom = 't'),
-        rownames = FALSE
-      )
-    }
-  })
-  
-  # gen template with autoharp test chunks
+
   observeEvent(input$generate_template, {
-    req(rv$solution_env)
-    req(rv$solution_objects)
-    req(input$selected_objects)
-    
-    tryCatch({
-      # Generate the autoharp-compatible template
-      template <- generate_autoharp_template(
-        original_content = rv$solution_file_content,
-        solution_env = rv$solution_env,
-        objects_to_test = input$selected_objects,
-        test_prefix = input$test_prefix,
-        include_all_tests = input$include_all_tests
+    if (is.null(rv$solution_content)) {
+      showNotification("Upload a model solution first.", type = "warning")
+      return()
+    }
+    if (!is_blank(input$tg_run_folder) && is.null(existing_folder(input$tg_run_folder))) {
+      showNotification(paste("Folder not found:", input$tg_run_folder), type = "error")
+      return()
+    }
+    run_dir <- solution_run_dir(input$tg_run_folder)
+
+    withProgress(message = "Running model solution...", value = 0.3, {
+      tryCatch({
+        knitted <- knit_solution(rv$solution_content, rv$solution_ext, run_dir)
+        objects <- ls(knitted$env)
+        objects <- objects[!grepl("^\\.", objects)]
+        if (length(objects) == 0) stop("The model solution did not create any objects.")
+
+        # keep objects the user unticked earlier unticked; select all others
+        unticked <- setdiff(rv$solution_objects, input$selected_objects)
+        rv$default_selection <- setdiff(objects, unticked)
+        rv$solution_env <- knitted$env
+        rv$solution_errors <- knitted$errors
+        rv$solution_run_dir <- run_dir
+        rv$solution_objects <- objects
+
+        incProgress(0.5, detail = "Generating template...")
+        rv$generated_template <- generate_autoharp_template(
+          original_content = rv$solution_content,
+          solution_env = knitted$env,
+          objects_to_test = rv$default_selection,
+          test_prefix = if (is_blank(input$test_prefix)) "test" else trimws(input$test_prefix),
+          include_all_tests = isTRUE(input$include_all_tests)
+        )
+        rv$template_objects <- rv$default_selection
+
+        if (length(knitted$errors) > 0) {
+          showNotification("Template generated, but the model solution had errors. See the Setup panel.",
+                           type = "warning", duration = 8)
+        } else {
+          showNotification(paste0("Template generated successfully! ", length(objects),
+                                  " objects found in the model solution."),
+                           type = "message")
+        }
+      }, error = function(e) {
+        showNotification(paste("Error loading solution:", e$message), type = "error", duration = 10)
+      })
+    })
+  })
+
+  output$solution_status <- renderUI({
+    if (is.null(rv$solution_content)) return(NULL)
+    run_dir_text <- if (!is.null(rv$solution_run_dir)) rv$solution_run_dir else "a temporary folder (no folder set)"
+    if (is.null(rv$solution_objects)) {
+      return(div(class = "status-alert status-info",
+                 icon("info-circle"), " ", tags$strong(rv$solution_name),
+                 " uploaded. Click Generate Template to run it."))
+    }
+    if (length(rv$solution_errors) > 0) {
+      div(class = "status-alert status-warning",
+          tags$strong(icon("exclamation-triangle"),
+                      paste0(" ", length(rv$solution_errors), " error(s) while running the model solution")),
+          if (is.null(rv$solution_run_dir)) {
+            p("Objects that depend on the failing code are missing. No 'Run Model Solution From' folder ",
+              "is set, so the solution ran in a temporary folder: if it reads data files, set that folder ",
+              "and click Generate Template again.")
+          } else {
+            tagList(
+              p("Objects that depend on the failing code are missing. Check that the data paths work from:"),
+              tags$code(run_dir_text))
+          },
+          tags$ul(lapply(utils::head(rv$solution_errors, 3), tags$li))
       )
-      
-      rv$generated_template <- template
+    } else {
+      div(class = "status-alert status-success",
+          icon("check-circle"), " ", tags$strong(rv$solution_name),
+          " ran without errors from ", tags$code(run_dir_text))
+    }
+  })
+
+  output$template_ready <- reactive(!is.null(rv$solution_objects))
+  outputOptions(output, "template_ready", suspendWhenHidden = FALSE)
+
+  output$objects_panel <- renderUI({
+    if (is.null(rv$solution_objects)) {
+      return(div(class = "status-alert status-info",
+                 icon("info-circle"),
+                 " Upload a model solution and click 'Generate Template' to list the objects it creates."))
+    }
+    fluidRow(
+      column(4,
+             h5(icon("list-check"), " Objects"),
+             div(class = "object-checkbox-group",
+                 checkboxGroupInput("selected_objects", NULL,
+                                    choices = rv$solution_objects,
+                                    selected = isolate(rv$default_selection))
+             ),
+             div(class = "select-links",
+                 actionLink("select_all_objects", "Select all"), " | ",
+                 actionLink("select_no_objects", "Select none"))
+      ),
+      column(8,
+             h5(icon("clipboard-check"), " Suggested Tests (for selected objects)"),
+             uiOutput("suggested_tests"))
+    )
+  })
+
+  observeEvent(input$select_all_objects, {
+    updateCheckboxGroupInput(session, "selected_objects", selected = rv$solution_objects)
+  })
+  observeEvent(input$select_no_objects, {
+    updateCheckboxGroupInput(session, "selected_objects", selected = character(0))
+  })
+
+  output$suggested_tests <- renderUI({
+    req(rv$solution_env)
+    selected <- input$selected_objects
+    if (length(selected) == 0) {
+      return(p(class = "text-muted", "No objects selected."))
+    }
+    rows <- lapply(selected, function(obj_name) {
+      obj <- get(obj_name, envir = rv$solution_env)
+      tags$tr(
+        tags$td(tags$strong(obj_name)),
+        tags$td(class(obj)[1]),
+        tags$td(paste(suggested_tests(obj, obj_name, isTRUE(input$include_all_tests)), collapse = ", "))
+      )
+    })
+    div(class = "suggested-tests",
+        tags$table(class = "table suggested-tests-table",
+                   tags$thead(tags$tr(tags$th("Object"), tags$th("Type"), tags$th("Tests"))),
+                   tags$tbody(rows)))
+  })
+
+  observeEvent(input$update_template, {
+    tryCatch({
+      build_template()
       showNotification("Template generated successfully!", type = "message")
     }, error = function(e) {
       showNotification(paste("Error generating template:", e$message), type = "error")
     })
   })
-  
-  # template status
+
   output$template_status <- renderUI({
-    if (is.null(rv$solution_env)) {
-      tags$div(class = "status-alert status-warning",
-               icon("exclamation-triangle"),
-               " Please upload a solution template in the 'Object Testing' tab first.")
+    if (is.null(rv$solution_content)) {
+      div(class = "status-alert status-warning",
+          icon("exclamation-triangle"),
+          " Please upload a model solution and click 'Generate Template' first.")
     } else if (is.null(rv$generated_template)) {
-      tags$div(class = "status-alert status-info",
-               icon("info-circle"),
-               " Click 'Generate Template' to create an autoharp-compatible template.")
+      div(class = "status-alert status-info",
+          icon("info-circle"),
+          " Click 'Generate Template' to create an autoharp-compatible template.")
+    } else if (!setequal(rv$template_objects, input$selected_objects)) {
+      div(class = "status-alert status-info",
+          icon("info-circle"),
+          " The object selection has changed. Click 'Update Template' to refresh the preview ",
+          "(downloads always use the current selection).")
     } else {
-      tags$div(class = "status-alert status-success",
-               icon("check-circle"),
-               " Template generated successfully! You can preview it below and download it.")
+      div(class = "status-alert status-success",
+          icon("check-circle"),
+          paste0(" Template generated successfully with tests for ", length(rv$template_objects),
+                 " object(s)! You can preview it below and download it."))
     }
   })
-  
-  # template preview
+
   output$template_preview <- renderText({
-    if (!is.null(rv$generated_template)) {
-      paste(rv$generated_template, collapse = "\n")
-    } else {
-      "# Template will appear here after generation..."
-    }
+    req(rv$generated_template)
+    paste(rv$generated_template, collapse = "\n")
   })
-  
-  # tests documentation
-  output$tests_documentation <- renderUI({
-    tags$div(
-      tags$h5("Numeric Vectors"),
-      tags$ul(
-        tags$li(tags$strong("length"), " - Compares length of vectors"),
-        tags$li(tags$strong("mean"), " - Compares mean values (tolerance: 1e-6)"),
-        tags$li(tags$strong("sd"), " - Compares standard deviation (tolerance: 1e-6)"),
-        tags$li(tags$strong("min"), " - Compares minimum values"),
-        tags$li(tags$strong("max"), " - Compares maximum values"),
-        tags$li(tags$strong("sum"), " - Compares sum of values"),
-        tags$li(tags$strong("na_count"), " - Compares count of NA values"),
-        tags$li(tags$strong("identical"), " - Checks if all values match exactly")
-      ),
-      
-      tags$h5("Character Vectors"),
-      tags$ul(
-        tags$li(tags$strong("length"), " - Compares length of vectors"),
-        tags$li(tags$strong("identical"), " - Checks if all values match exactly"),
-        tags$li(tags$strong("unique_count"), " - Compares count of unique values"),
-        tags$li(tags$strong("nchar_total"), " - Compares total character count")
-      ),
-      
-      tags$h5("Data Frames"),
-      tags$ul(
-        tags$li(tags$strong("nrow"), " - Compares number of rows"),
-        tags$li(tags$strong("ncol"), " - Compares number of columns"),
-        tags$li(tags$strong("colnames"), " - Checks if column names match"),
-        tags$li(tags$strong("column_types"), " - Checks if column types match"),
-        tags$li(tags$strong("column_means"), " - Compares means of numeric columns"),
-        tags$li(tags$strong("column_sds"), " - Compares SDs of numeric columns")
-      ),
-      
-      tags$h5("Matrices"),
-      tags$ul(
-        tags$li(tags$strong("nrow"), " - Compares number of rows"),
-        tags$li(tags$strong("ncol"), " - Compares number of columns"),
-        tags$li(tags$strong("rownames"), " - Checks if row names match"),
-        tags$li(tags$strong("colnames"), " - Checks if column names match"),
-        tags$li(tags$strong("mean"), " - Compares overall mean"),
-        tags$li(tags$strong("max_diff"), " - Checks maximum element difference")
-      ),
-      
-      tags$h5("Lists"),
-      tags$ul(
-        tags$li(tags$strong("length"), " - Compares number of elements"),
-        tags$li(tags$strong("names"), " - Checks if element names match"),
-        tags$li(tags$strong("element_tests"), " - Tests each named element")
-      ),
-      
-      tags$h5("Functions"),
-      tags$ul(
-        tags$li(tags$strong("num_args"), " - Compares number of arguments"),
-        tags$li(tags$strong("arg_names"), " - Checks if argument names match")
-      ),
-      
-      tags$h5("Factors"),
-      tags$ul(
-        tags$li(tags$strong("length"), " - Compares length"),
-        tags$li(tags$strong("nlevels"), " - Compares number of levels"),
-        tags$li(tags$strong("levels"), " - Checks if levels match"),
-        tags$li(tags$strong("level_order"), " - Checks if level order matches"),
-        tags$li(tags$strong("frequencies"), " - Compares level frequencies")
-      )
-    )
-  })
-  
-  # download template handler
+
   output$download_template <- downloadHandler(
-    filename = function() {
-      # Use the original file extension if available, otherwise default to .Rmd
-      extension <- if (!is.null(rv$solution_file_extension)) rv$solution_file_extension else ".Rmd"
-      paste0("solution_template_autoharp_", format(Sys.time(), "%Y%m%d_%H%M%S"), extension)
-    },
+    filename = function() generated_template_name(),
     content = function(file) {
-      req(rv$generated_template)
-      writeLines(rv$generated_template, file)
+      writeLines(build_template(), file)
     }
   )
-  
+
+  observeEvent(input$use_template, {
+    tryCatch({
+      template <- build_template()
+      rv$autoharp_template <- list(name = generated_template_name(), content = template,
+                                   source = "generated")
+      if (!is_blank(input$tg_run_folder)) {
+        updateTextInput(session, "autoharp_run_folder", value = input$tg_run_folder)
+        sync_state$run <- input$tg_run_folder
+      }
+      prefix <- if (is_blank(input$test_prefix)) "test" else trimws(input$test_prefix)
+      updateTextInput(session, "test_pattern", value = prefix)
+      sync_state$prefix <- input$test_prefix
+      updateTabsetPanel(session, "main_tabs", selected = "autoharp")
+      showNotification("Template loaded into Autoharp Grading.", type = "message")
+    }, error = function(e) {
+      showNotification(e$message, type = "error")
+    })
+  })
+
   # =========================================
-  # Tab 4: Autoharp Grading Server Logic
+  # Tab 2: Autoharp Grading
   # =========================================
-  
-  # run autoharp grading with user-selected template and folder
+
+  observeEvent(input$autoharp_template_file, {
+    if (!grepl("\\.(rmd|qmd)$", tolower(input$autoharp_template_file$name))) {
+      showNotification("Template file must be an RMD or QMD file.", type = "error")
+      return()
+    }
+    rv$autoharp_template <- list(
+      name = input$autoharp_template_file$name,
+      content = readLines(input$autoharp_template_file$datapath, warn = FALSE),
+      source = "upload"
+    )
+    showNotification(paste("Grading template loaded:", input$autoharp_template_file$name), type = "message")
+  })
+
+  output$autoharp_template_source <- renderUI({
+    tmpl <- rv$autoharp_template
+    if (is.null(tmpl)) {
+      p(class = "text-muted small template-source",
+        "Upload a template, or use one from the Template Generation tab.")
+    } else {
+      source_text <- if (identical(tmpl$source, "generated")) "generated in Template Generation" else "uploaded"
+      div(class = "template-source template-source-active",
+          icon("check-circle"), " Using ", tags$strong(tmpl$name),
+          tags$span(class = "text-muted", paste0(" (", source_text, ")")))
+    }
+  })
+
+  output$output_dir_hint <- renderUI({
+    out_dir <- resolve_output_dir(input$autoharp_output_folder, input$autoharp_student_folder)
+    if (is.null(out_dir)) {
+      p(class = "text-muted small",
+        "Rendered output, plots and session files are saved next to the student scripts folder.")
+    } else {
+      p(class = "text-muted small",
+        "Rendered output, plots and session files will be saved to: ", tags$code(out_dir))
+    }
+  })
+
   observeEvent(input$run_autoharp_grading, {
-    
-    rv$autoharp_processing <- TRUE
-    
-    # Create progress indicator
+    tmpl <- rv$autoharp_template
+    student_folder <- existing_folder(input$autoharp_student_folder)
+    if (is.null(tmpl)) {
+      showNotification("Upload a grading template, or use one from Template Generation.", type = "error")
+      return()
+    }
+    if (is.null(student_folder)) {
+      showNotification(paste("Student scripts folder not found:",
+                             if (is_blank(input$autoharp_student_folder)) "(not set)" else resolve_path(input$autoharp_student_folder)),
+                       type = "error")
+      return()
+    }
+    if (!is_blank(input$autoharp_run_folder) && is.null(existing_folder(input$autoharp_run_folder))) {
+      showNotification(paste("Folder not found:", input$autoharp_run_folder), type = "error")
+      return()
+    }
+    student_files <- list_student_files(student_folder)
+    if (length(student_files) == 0) {
+      showNotification(paste("No R, Rmd, or QMD files found in folder:", student_folder), type = "error")
+      return()
+    }
+    run_dir <- if (!is_blank(input$autoharp_run_folder)) existing_folder(input$autoharp_run_folder) else student_folder
+    out_dir <- resolve_output_dir(input$autoharp_output_folder, student_folder)
+    pattern <- if (is_blank(input$test_pattern)) "test" else trimws(input$test_pattern)
+
     withProgress(message = "Running autoharp grading...", value = 0, {
-      
       tryCatch({
-        # get template path from user input or use default
-        if (!is.null(input$autoharp_template_file)) {
-          template_path <- input$autoharp_template_file$datapath
-          
-          # validate file extension (case-insensitive by converting to lowercase)
-          # handles .Rmd, .rmd, .RMD, .qmd, .Qmd, .QMD, etc.
-          if (!grepl("\\.(rmd|qmd)$", tolower(input$autoharp_template_file$name))) {
-            stop("Template file must be an RMD or QMD file (.Rmd, .rmd, .qmd, or .Qmd)")
-          }
-          
-          # validate file exists and is readable
-          if (!file.exists(template_path) || file.access(template_path, mode = 4) != 0) {
-            stop("Template file cannot be read")
-          }
-        } else {
-          # use default template file if no file uploaded (RMD format for backward compatibility)
-          template_path <- "solution_template_autoharp_20251218_121348.Rmd"
-        }
-        
-        # check if template exists
-        if (!file.exists(template_path)) {
-          stop(paste("Template file not found:", template_path))
-        }
-        
-        # get pattern from input, default to "test"
-        pattern <- input$test_pattern
-        if (is.null(pattern) || pattern == "") {
-          pattern <- "test"
-        }
-        
-        # get student folder from user input or use default
-        sol_folder <- input$autoharp_student_folder
-        if (is.null(sol_folder) || sol_folder == "") {
-          sol_folder <- "sol"
-        }
-        
-        # Normalize the path (handle both absolute and relative paths)
-        sol_folder_normalized <- tryCatch({
-          if (is_absolute_path(sol_folder)) {
-            # Absolute path - normalize it directly
-            normalize_path_safe(sol_folder)
-          } else {
-            # Relative path - construct relative to cwd
-            cwd <- normalizePath(getwd(), winslash = "/", mustWork = TRUE)
-            candidate_path <- file.path(cwd, sol_folder)
-            normalize_path_safe(candidate_path)
-          }
-        }, error = function(e) {
-          stop(paste("Invalid folder path:", e$message))
-        })
-        
-        # use normalized path
-        sol_folder <- sol_folder_normalized
-        
-        if (!dir.exists(sol_folder)) {
-          stop(paste("Student scripts folder not found:", sol_folder))
-        }
-        
-        student_files <- list.files(sol_folder, 
-                                    pattern = "\\.(R|Rmd|rmd|qmd|Qmd)$", 
-                                    full.names = TRUE)
-        
-        if (length(student_files) == 0) {
-          stop(paste("No Rmd or QMD files found in folder:", sol_folder))
-        }
-        
-        incProgress(0.1, detail = paste("Found", length(student_files), "student files"))
-        
-        # Get output directory from input or use default
-        out_dir <- if (!is.null(input$autoharp_output_folder) && !is.na(input$autoharp_output_folder) && input$autoharp_output_folder != "") {
-          input$autoharp_output_folder
-        } else {
-          "student_out"
-        }
-
-        # create output directory for autoharp
-        if (!dir.exists(out_dir)) {
-          dir.create(out_dir, recursive = TRUE)
-        }
-
-        # Convert out_dir to absolute path so it works regardless of knit_root_dir
+        dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
         out_dir <- normalizePath(out_dir, winslash = "/", mustWork = TRUE)
-        
-        # pop solution environment using autoharp function
+
+        # write the template under its own name so render logs stay readable
+        template_dir <- tempfile("template_")
+        dir.create(template_dir)
+        template_path <- file.path(template_dir, tmpl$name)
+        writeLines(tmpl$content, template_path)
+
         incProgress(0.1, detail = "Loading template...")
-        # print(student_files[1])
+        old_root_dir <- knitr::opts_knit$get("root.dir")
+        old_fig_path <- knitr::opts_chunk$get("fig.path")
+        knitr::opts_chunk$set(fig.path = file.path(KNITR_SOLN_FIG_DIR, "fig-"))
         s_env <- tryCatch({
-          populate_soln_env(template_path, pattern = pattern,
-                            knit_root_dir = 
-                            dirname(normalizePath(student_files[1], mustWork = TRUE)))
+          populate_soln_env(template_path, pattern = pattern, knit_root_dir = run_dir)
         }, error = function(e) {
-          stop(paste("Failed to process autoharp template:", e$message,
-                     "\nPlease ensure the template contains valid autoharp test chunks with pattern:", pattern))
+          stop(paste0("Failed to process the grading template: ", e$message,
+                      ". Check that it contains test chunks matching the pattern '", pattern, "'."))
+        }, finally = {
+          knitr::opts_knit$set(root.dir = old_root_dir)
+          knitr::opts_chunk$set(
+            fig.path = if (!is.null(old_fig_path)) old_fig_path else KNITR_DEFAULT_FIG_PATH)
         })
-        
-        n_students <- length(student_files)
-        
-        # run render_one on all student scripts using lapply
-        incProgress(0.1, detail = "Processing student scripts...")
-        
-        # helper function to create consistent error dataframe
+
         create_error_result <- function(student_file, error_msg) {
           data.frame(
             fname = student_file,
@@ -1795,284 +1414,527 @@ server <- function(input, output, session) {
             stringsAsFactors = FALSE
           )
         }
-        
-        # track progress more precisely
-        progress_per_student <- 0.6 / n_students
-        
-        corr_out <- lapply(seq_along(student_files), function(i) {
-          student_file <- student_files[i]
+
+        continue_on_error <- isTRUE(input$continue_on_error)
+        progress_per_student <- 0.75 / length(student_files)
+        corr_out <- lapply(student_files, function(student_file) {
           incProgress(progress_per_student, detail = paste("Processing", basename(student_file)))
-
-          # Use the student file's directory as the working directory for knitting
-          # This ensures relative paths in student scripts (e.g., "../data/file.csv") work correctly
-          student_dir <- dirname(student_file)
-
-          tryCatch({
+          graded_file <- student_file
+          result <- tryCatch({
+            # grade a copy that keeps running after errors, still run from the
+            # student's own folder so relative paths work as before
+            if (continue_on_error) graded_file <- allow_errors_copy(student_file)
             result <- render_one(
-              rmd_name = student_file,
+              rmd_name = graded_file,
               out_dir = out_dir,
-              knit_root_dir = student_dir,
+              knit_root_dir = dirname(student_file),
               soln_stuff = s_env,
-              permission_to_install = input$permission_to_install
+              permission_to_install = isTRUE(input$permission_to_install)
             )
-            # Ensure consistent columns by adding error_message as NA
             if (!"error_message" %in% names(result)) {
               result$error_message <- NA_character_
             }
-            # Ensure we only return one row per student (take first row if multiple)
-            if (nrow(result) > 1) {
-              result <- result[1, , drop = FALSE]
-            }
+            result <- result[1, , drop = FALSE]
+            result$fname <- student_file
             result
           }, error = function(e) {
-            # Return error result with consistent structure
             create_error_result(student_file, e$message)
+          }, finally = {
+            if (!identical(graded_file, student_file)) unlink(dirname(graded_file), recursive = TRUE)
           })
+          errors <- student_code_errors(out_dir, student_file)
+          result$code_errors <- length(errors)
+          result$code_error_messages <- if (length(errors) > 0) paste(errors, collapse = " | ") else NA_character_
+          result
         })
-        
-        # combine results into a single dataframe by normalizing columns
-        # handles cases where different results may have different columns
+
+        # combine results, filling in columns missing for some students
         all_cols <- unique(unlist(lapply(corr_out, names)))
-        normalized_results <- lapply(corr_out, function(df) {
-          missing_cols <- setdiff(all_cols, names(df))
-          for (col in missing_cols) {
-            df[[col]] <- NA
-          }
+        corr_out <- lapply(corr_out, function(df) {
+          for (col in setdiff(all_cols, names(df))) df[[col]] <- NA
           df[, all_cols, drop = FALSE]
         })
-        combined_results <- do.call("rbind", normalized_results)
+        combined_results <- do.call("rbind", corr_out)
+        combined_results <- combined_results[!duplicated(combined_results$fname), , drop = FALSE]
 
-        # Deduplicate: ensure only one row per student file
-        # Keep only the first occurrence of each fname
-        if (!is.null(combined_results) && nrow(combined_results) > 0) {
-          combined_results <- combined_results[!duplicated(combined_results$fname), , drop = FALSE]
+        incProgress(0.1, detail = "Collecting student plots...")
+        student_plots <- lapply(student_files, collect_student_plots, plots_output_dir = out_dir)
+        names(student_plots) <- basename(student_files)
+
+        # keep existing plot grades for students that are graded again
+        plot_grades <- data.frame(
+          student_file = basename(student_files),
+          grade = NA_real_,
+          comments = "",
+          graded = FALSE,
+          stringsAsFactors = FALSE
+        )
+        if (!is.null(rv$plot_grades)) {
+          m <- match(plot_grades$student_file, rv$plot_grades$student_file)
+          keep <- !is.na(m)
+          plot_grades[keep, c("grade", "comments", "graded")] <-
+            rv$plot_grades[m[keep], c("grade", "comments", "graded")]
         }
+
         rv$autoharp_results <- combined_results
-        rv$autoharp_student_files <- student_files
-        
-        # Populate student_files and plot_grades for Plot Grading tab if not already set
-        # from Object Testing workflow
-        if (is.null(rv$student_files)) {
-          rv$student_files <- student_files
-          rv$plot_grades <- data.frame(
-            student_file = basename(student_files),
-            grade = rep(NA_real_, length(student_files)),
-            comments = rep("", length(student_files)),
-            graded = rep(FALSE, length(student_files)),
-            stringsAsFactors = FALSE
-          )
-        }
-        
-        # Collect plots from autoharp output directory for Plot Grading tab
-        incProgress(0.05, detail = "Collecting student plots...")
-        autoharp_plots <- list()
-        for (sf in student_files) {
-          sname <- basename(sf)
-          autoharp_plots[[sname]] <- collect_student_plots(sf, out_dir)
-        }
-        # Merge with any existing plots from Object Testing (don't overwrite)
-        for (sname in names(autoharp_plots)) {
-          if (length(autoharp_plots[[sname]]) > 0 &&
-              length(rv$student_plots[[sname]]) == 0) {
-            rv$student_plots[[sname]] <- autoharp_plots[[sname]]
-          }
-        }
-        
-        incProgress(0.05, detail = "Complete!")
-        
-        # Auto-save session after autoharp grading, using the autoharp output
-        # directory (out_dir) so the session file lives alongside the grading
-        # results rather than in the Object Testing output folder.
-        save_result <- save_session_state(out_dir = out_dir)
-        if (save_result$success) {
-          showNotification(
-            paste0("Autoharp grading complete! Session auto-saved to: ", basename(save_result$file)),
-            type = "message"
-          )
-        } else {
-          showNotification("Autoharp grading complete!", type = "message")
-        }
-        
+        rv$student_files <- student_files
+        rv$student_plots <- student_plots
+        rv$output_dir <- out_dir
+        rv$plot_grades <- plot_grades
+        rv$current_student_index <- 1
+        rv$plot_index <- 1
+        push_grade_inputs()
+
+        save_result <- save_session_state(kind = "auto")
+        showNotification(
+          paste0("Autoharp grading complete!",
+                 if (save_result$success) paste0(" Session auto-saved to: ", basename(save_result$file)) else ""),
+          type = "message"
+        )
       }, error = function(e) {
-        showNotification(paste("Error during autoharp grading:", e$message), type = "error")
+        showNotification(paste("Error during autoharp grading:", e$message), type = "error", duration = 10)
       })
-      
-      rv$autoharp_processing <- FALSE
     })
   })
-  
-  # autoharp status output
+
   output$autoharp_status <- renderUI({
-    if (rv$autoharp_processing) {
-      tags$div(
-        class = "alert alert-info",
-        "Processing student submissions with autoharp..."
-      )
-    } else if (!is.null(rv$autoharp_results)) {
-      # Count unique student files (in case there are duplicate rows)
-      n_students <- length(unique(rv$autoharp_results$fname))
-      n_success <- sum(rv$autoharp_results$run_status == "SUCCESS", na.rm = TRUE)
-      
-      tags$div(
-        class = "alert alert-success",
-        paste("Completed:", n_students, "students processed,", 
-              n_success, "successful,", n_students - n_success, "failed")
-      )
-    } else {
-      tags$div(
-        class = "alert alert-info",
-        icon("info-circle"),
-        " Upload a template file and specify the student scripts folder, then click 'Run Autoharp Grading'."
-      )
+    if (is.null(rv$autoharp_results)) {
+      return(div(class = "status-alert status-info",
+                 icon("info-circle"),
+                 " Choose a grading template and the student scripts folder, then click 'Run Automated Grading'."))
     }
+    results <- rv$autoharp_results
+    n_students <- nrow(results)
+    n_success <- sum(results$run_status == "SUCCESS", na.rm = TRUE)
+    n_with_errors <- if ("code_errors" %in% names(results)) {
+      sum(results$run_status == "SUCCESS" & results$code_errors > 0, na.rm = TRUE)
+    } else 0
+    all_clean <- n_success == n_students && n_with_errors == 0
+    div(class = if (all_clean) "status-alert status-success" else "status-alert status-warning",
+        icon(if (all_clean) "check-circle" else "exclamation-triangle"),
+        tags$strong(" Grading completed: "),
+        paste0(n_students, " students processed, ", n_success, " successful",
+               if (n_with_errors > 0) paste0(" (", n_with_errors, " with errors in their code)"),
+               ", ", n_students - n_success, " failed."),
+        if (n_with_errors > 0) {
+          tags$div(class = "small", style = "margin-top: 4px;",
+                   "Code after an error still ran, so the remaining objects were tested. ",
+                   "See the Code Errors column.")
+        })
   })
-  
-  # autoharp results table with plot grades
+
+  # columns of autoharp results that hold test results (scalars)
+  test_columns <- function(results) {
+    setdiff(names(results), c("fname", "time_stamp", "run_status", "run_time", "run_mem",
+                              "error", "error_message", "code_errors", "code_error_messages"))
+  }
+
+  # "1: object 'S' not found" style summary of the code errors per student
+  # ("" when there were none, or for results from older sessions)
+  code_error_summary <- function(results) {
+    if (!"code_errors" %in% names(results)) return(rep("", nrow(results)))
+    first <- sub(" \\|.*$", "", results$code_error_messages)
+    ifelse(!is.na(results$code_errors) & results$code_errors > 0,
+           paste0(results$code_errors, ": ", first,
+                  ifelse(results$code_errors > 1, " ...", "")),
+           "")
+  }
+
+  has_code_errors <- function(results) {
+    "code_errors" %in% names(results) && any(results$code_errors > 0, na.rm = TRUE)
+  }
+
+  # shorter column names for the on-screen tables (Excel keeps the full names)
+  display_names <- function(df) {
+    names(df) <- sub("_check$", "", names(df))
+    df
+  }
+
   output$autoharp_results <- renderDT({
     req(rv$autoharp_results)
-    
     results <- rv$autoharp_results
-    
-    # Create comprehensive display dataframe
     display_df <- data.frame(
       Student = basename(results$fname),
       Status = results$run_status,
-      Timestamp = results$time_stamp,
       stringsAsFactors = FALSE
     )
-    
-    # Add run_time and run_mem if available
-    if ("run_time" %in% names(results)) {
-      display_df$`Run Time (s)` <- round(results$run_time, 2)
+    if ("run_time" %in% names(results)) display_df$`Run Time (s)` <- round(results$run_time, 2)
+    if ("run_mem" %in% names(results)) display_df$`Memory Used` <- results$run_mem
+    for (col in test_columns(results)) display_df[[col]] <- results[[col]]
+    if ("error_message" %in% names(results) && any(!is.na(results$error_message))) {
+      display_df$Error <- results$error_message
     }
-    if ("run_mem" %in% names(results)) {
-      display_df$`Memory Used` <- results$run_mem
+    if (has_code_errors(results)) display_df$`Code Errors` <- code_error_summary(results)
+    # Add plot grades once any student has been graded (as in the original app)
+    pg <- rv$plot_grades
+    if (!is.null(pg) && any(pg$graded)) {
+      m <- match(display_df$Student, pg$student_file)
+      graded <- !is.na(m) & pg$graded[m]
+      display_df$`Plot Mark` <- ifelse(graded, pg$grade[m], NA)
+      display_df$`Plot Comments` <- ifelse(graded, pg$comments[m], NA)
     }
-    
-    # Add any correctness check columns (they have specific patterns)
-    corr_cols <- names(results)[!names(results) %in% c("fname", "time_stamp", "run_status", "run_time", "run_mem", "error", "error_message")]
-    for (col in corr_cols) {
-      display_df[[col]] <- results[[col]]
+    datatable(
+      display_names(display_df),
+      options = list(pageLength = 10, scrollX = TRUE, dom = "frtip"),
+      rownames = FALSE,
+      class = "cell-border stripe hover"
+    ) %>%
+      formatStyle("Status",
+                  backgroundColor = styleEqual(c("SUCCESS", "FAIL", "UNKNOWN"),
+                                               c("#d4edda", "#f8d7da", "#fff3cd")))
+  })
+
+  output$plots_detected <- renderUI({
+    req(rv$autoharp_results)
+    n_plots <- lengths(rv$student_plots)
+    if (sum(n_plots) == 0) {
+      return(div(class = "status-alert status-info plots-detected",
+                 icon("image"), " No plots were detected in the student submissions."))
     }
-    
-    # Add plot grades if available
-    if (!is.null(rv$plot_grades)) {
-      # Match students between autoharp results and plot grades
-      # Extract basename for consistent matching
-      plot_grades_df <- rv$plot_grades[rv$plot_grades$graded, c("student_file", "grade", "comments")]
-      
-      if (nrow(plot_grades_df) > 0) {
-        # Ensure consistent basename matching
-        plot_grades_df$student_file <- basename(plot_grades_df$student_file)
-        
-        # Merge by student name
-        display_df <- merge(
-          display_df, 
-          plot_grades_df, 
-          by.x = "Student", 
-          by.y = "student_file", 
-          all.x = TRUE
-        )
-        names(display_df)[names(display_df) == "grade"] <- "Plot_Grade"
-        names(display_df)[names(display_df) == "comments"] <- "Plot_Comments"
+    div(class = "status-alert status-info plots-detected",
+        div(icon("image"), tags$strong(" Plots detected: "),
+            paste0(sum(n_plots > 0), " students generated ", sum(n_plots), " plots.")),
+        actionButton("go_plot_grading", "Go to Plot Grading", icon = icon("arrow-right"),
+                     class = "btn-primary btn-sm")
+    )
+  })
+
+  observeEvent(input$go_plot_grading, {
+    updateTabsetPanel(session, "main_tabs", selected = "plots")
+  })
+
+  # Combined autoharp results and plot grades; test results shown as PASS/FAIL
+  consolidated_results <- function(pass_fail = TRUE, details = FALSE) {
+    results <- rv$autoharp_results
+    df <- data.frame(Student = basename(results$fname), Status = results$run_status,
+                     stringsAsFactors = FALSE)
+    if (details) {
+      df$run_time <- results$run_time
+      df$run_mem <- results$run_mem
+    }
+    for (col in test_columns(results)) {
+      values <- results[[col]]
+      if (pass_fail && is.logical(values)) {
+        values <- ifelse(is.na(values), NA, ifelse(values, "PASS", "FAIL"))
       }
+      df[[col]] <- values
     }
-    
+    if (details && "error_message" %in% names(results)) df$error_message <- results$error_message
+    if (details && "code_errors" %in% names(results)) {
+      df$code_errors <- results$code_errors
+      df$code_error_messages <- results$code_error_messages
+    } else if (!details && has_code_errors(results)) {
+      df$`Code Errors` <- code_error_summary(results)
+    }
+    pg <- rv$plot_grades
+    m <- if (!is.null(pg)) match(df$Student, pg$student_file) else rep(NA_integer_, nrow(df))
+    df$`Plot Mark` <- if (!is.null(pg)) pg$grade[m] else NA
+    df$Comments <- if (!is.null(pg)) pg$comments[m] else NA
+    df$Graded <- if (!is.null(pg)) ifelse(!is.na(m) & pg$graded[m], "Yes", "No") else "No"
+    df
+  }
+
+  make_excel_handler <- function() {
+    downloadHandler(
+      filename = function() {
+        paste0("autoharp_grading_results_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".xlsx")
+      },
+      content = function(file) {
+        if (!requireNamespace("openxlsx", quietly = TRUE)) {
+          showNotification("Package 'openxlsx' is required for Excel export: install.packages('openxlsx')",
+                           type = "error", duration = 10)
+          stop("openxlsx package not available")
+        }
+        wb <- openxlsx::createWorkbook()
+        openxlsx::addWorksheet(wb, "Grading Results")
+        if (!is.null(rv$autoharp_results)) {
+          openxlsx::writeData(wb, "Grading Results", consolidated_results(pass_fail = FALSE, details = TRUE))
+        } else {
+          openxlsx::writeData(wb, "Grading Results", data.frame(Message = "No grading results yet."))
+        }
+        openxlsx::addWorksheet(wb, "Plot Grades")
+        if (!is.null(rv$plot_grades)) {
+          sheet2 <- rv$plot_grades[, c("student_file", "grade", "comments", "graded")]
+          names(sheet2) <- c("Student", "Plot Mark", "Comments", "Graded")
+          openxlsx::writeData(wb, "Plot Grades", sheet2)
+        } else {
+          openxlsx::writeData(wb, "Plot Grades", data.frame(Message = "No plot grades yet."))
+        }
+        openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
+      }
+    )
+  }
+  output$download_autoharp_excel <- make_excel_handler()
+  output$download_consolidated_excel <- make_excel_handler()
+
+  # =========================================
+  # Tab 3: Plot Grading
+  # =========================================
+
+  # Show the stored grade/comments of the current student in the inputs
+  push_grade_inputs <- function() {
+    pg <- isolate(rv$plot_grades)
+    idx <- isolate(rv$current_student_index)
+    grade_state$dirty <- FALSE
+    if (is.null(pg) || idx < 1 || idx > nrow(pg)) return(invisible())
+    updateNumericInput(session, "plot_grade", value = pg$grade[idx])
+    updateTextAreaInput(session, "plot_comments", value = pg$comments[idx])
+  }
+
+  # Store the grade/comment inputs for student idx
+  store_grade <- function(idx, mark_graded = TRUE) {
+    pg <- rv$plot_grades
+    grade <- input$plot_grade
+    grade <- if (is.null(grade) || length(grade) == 0) NA_real_ else as.numeric(grade)
+    comments <- if (is.null(input$plot_comments)) "" else input$plot_comments
+    pg$grade[idx] <- grade
+    pg$comments[idx] <- comments
+    if (mark_graded || !is.na(grade) || nzchar(trimws(comments))) pg$graded[idx] <- TRUE
+    rv$plot_grades <- pg
+    grade_state$dirty <- FALSE
+  }
+
+  # Inputs edited by hand for the current student (compared with stored values)
+  observeEvent(list(input$plot_grade, input$plot_comments), {
+    pg <- rv$plot_grades
+    idx <- rv$current_student_index
+    if (is.null(pg) || idx < 1 || idx > nrow(pg)) return()
+    grade <- input$plot_grade
+    grade <- if (is.null(grade) || length(grade) == 0) NA_real_ else as.numeric(grade)
+    comments <- if (is.null(input$plot_comments)) "" else input$plot_comments
+    stored_grade <- pg$grade[idx]
+    same_grade <- (is.na(grade) && is.na(stored_grade)) ||
+      (!is.na(grade) && !is.na(stored_grade) && isTRUE(all.equal(grade, stored_grade)))
+    grade_state$dirty <- !(same_grade && identical(comments, pg$comments[idx]))
+  }, ignoreInit = TRUE, ignoreNULL = FALSE)
+
+  # Switch student, keeping any edited grade/comments of the current one
+  go_to_student <- function(idx) {
+    pg <- rv$plot_grades
+    if (is.null(pg) || idx < 1 || idx > nrow(pg)) return(invisible())
+    if (isTRUE(grade_state$dirty)) {
+      store_grade(rv$current_student_index, mark_graded = FALSE)
+      save_session_state(kind = "auto")
+    }
+    rv$current_student_index <- idx
+    rv$plot_index <- 1
+    updateSelectInput(session, "current_student", selected = idx)
+    push_grade_inputs()
+  }
+
+  output$student_selector <- renderUI({
+    if (is.null(rv$student_files)) {
+      return(p(class = "text-muted small", "Run autoharp grading first to list the students."))
+    }
+    selectInput("current_student", "Select Student:",
+                choices = setNames(seq_along(rv$student_files), basename(rv$student_files)),
+                selected = isolate(rv$current_student_index),
+                width = "100%")
+  })
+
+  observeEvent(input$current_student, {
+    idx <- as.integer(input$current_student)
+    if (!identical(idx, as.integer(rv$current_student_index))) go_to_student(idx)
+  })
+  observeEvent(input$prev_student, go_to_student(rv$current_student_index - 1))
+  observeEvent(input$next_student, go_to_student(rv$current_student_index + 1))
+
+  observeEvent(input$save_grade, {
+    if (is.null(rv$plot_grades)) {
+      showNotification("Run autoharp grading first.", type = "warning")
+      return()
+    }
+    idx <- rv$current_student_index
+    store_grade(idx, mark_graded = TRUE)
+    save_result <- save_session_state(kind = "auto")
+    showNotification(
+      if (save_result$success) "Grade saved and session auto-saved!" else "Grade saved!",
+      type = "message"
+    )
+    if (idx < nrow(rv$plot_grades)) go_to_student(idx + 1)
+  })
+
+  current_plots <- reactive({
+    req(rv$student_files)
+    student_name <- basename(rv$student_files[rv$current_student_index])
+    plots <- rv$student_plots[[student_name]]
+    if (is.null(plots)) character(0) else plots
+  })
+
+  observeEvent(input$prev_plot, {
+    if (rv$plot_index > 1) rv$plot_index <- rv$plot_index - 1
+  })
+  observeEvent(input$next_plot, {
+    if (rv$plot_index < length(current_plots())) rv$plot_index <- rv$plot_index + 1
+  })
+
+  output$plot_counter <- renderText({
+    n <- if (is.null(rv$student_files)) 0 else length(current_plots())
+    if (n == 0) "No plots" else paste("Plot", min(rv$plot_index, n), "of", n)
+  })
+
+  output$plot_display <- renderUI({
+    if (is.null(rv$student_files)) {
+      return(div(class = "alert alert-warning",
+                 icon("exclamation-triangle"),
+                 " Run automated grading first to collect student plots."))
+    }
+    plots <- current_plots()
+    if (length(plots) == 0) {
+      return(div(class = "alert alert-info",
+                 icon("info-circle"),
+                 " No plots found for this student."))
+    }
+    plot_path <- plots[min(rv$plot_index, length(plots))]
+    if (!file.exists(plot_path)) {
+      return(div(class = "alert alert-warning",
+                 icon("exclamation-triangle"), " Plot file not found: ", tags$code(plot_path),
+                 tags$br(),
+                 "The output folder may have been moved or deleted since grading. Re-run the grading to recreate the plots."))
+    }
+    ext <- tolower(tools::file_ext(plot_path))
+    mime_type <- switch(ext, png = "image/png", jpg = "image/jpeg", jpeg = "image/jpeg",
+                        gif = "image/gif", svg = "image/svg+xml", "image/png")
+    img_src <- paste0("data:", mime_type, ";base64,", base64enc::base64encode(plot_path))
+    dims <- if (ext == "png") png_dimensions(plot_path) else NULL
+    student_name <- basename(rv$student_files[rv$current_student_index])
+    plot_title <- paste0(student_name, " - Plot ", min(rv$plot_index, length(plots)))
+
+    fluidRow(
+      div(class = "col-lg-8",
+             div(class = "plot-viewer",
+                 tags$button(
+                   class = "expand-icon",
+                   `data-img-src` = img_src,
+                   `data-plot-title` = plot_title,
+                   onclick = "openPlotModalFromButton(this)",
+                   title = "Expand plot",
+                   icon("expand")
+                 ),
+                 tags$img(src = img_src, alt = plot_title))),
+      div(class = "col-lg-4",
+             div(class = "well plot-info",
+                 h5(icon("info-circle"), " Plot Information"),
+                 tags$table(class = "table table-condensed plot-info-table",
+                            tags$tr(tags$th("File"), tags$td(class = "file-cell", basename(plot_path))),
+                            tags$tr(tags$th("Size"),
+                                    tags$td(if (!is.null(dims)) paste(dims[["width"]], "×", dims[["height"]], "px") else "-")),
+                            tags$tr(tags$th("Generated"),
+                                    tags$td(format(file.mtime(plot_path), "%Y-%m-%d %H:%M")))),
+                 tags$button(class = "btn btn-secondary",
+                             style = "width: 100%;",
+                             `data-img-src` = img_src,
+                             `data-plot-title` = plot_title,
+                             onclick = "openPlotModalFromButton(this)",
+                             icon("expand"), " View Full Size")))
+    )
+  })
+
+  # autoharp results row of the current student (NULL if not graded)
+  current_student_result <- reactive({
+    req(rv$autoharp_results, rv$student_files)
+    results <- rv$autoharp_results
+    row <- match(basename(rv$student_files[rv$current_student_index]), basename(results$fname))
+    if (is.na(row)) NULL else results[row, , drop = FALSE]
+  })
+
+  output$student_run_summary <- renderUI({
+    if (is.null(rv$autoharp_results)) return(NULL)
+    res <- current_student_result()
+    if (is.null(res)) return(NULL)
+    code_errors <- if (!is.null(res$code_errors) && !is.na(res$code_errors) && res$code_errors > 0) {
+      strsplit(res$code_error_messages, " | ", fixed = TRUE)[[1]]
+    } else character(0)
+    clean <- identical(res$run_status, "SUCCESS") && length(code_errors) == 0
+    div(class = paste("status-alert student-run-summary", if (clean) "status-success" else "status-warning"),
+        tags$strong(basename(res$fname)), " - ", res$run_status,
+        if (!is.null(res$run_time) && !is.na(res$run_time)) paste0(" | Run time: ", round(res$run_time, 2), " s"),
+        if (!is.null(res$run_mem) && !is.na(res$run_mem)) paste0(" | Memory used: ", res$run_mem),
+        if (!is.null(res$error_message) && !is.na(res$error_message)) tags$div(tags$code(res$error_message)),
+        if (length(code_errors) > 0) {
+          tags$div(style = "margin-top: 6px;",
+                   tags$strong(icon("exclamation-triangle"),
+                               paste0(" ", length(code_errors), " error(s) in the student's code"),
+                               " (the rest of the code still ran):"),
+                   tags$ul(lapply(utils::head(code_errors, 5), function(msg) tags$li(tags$code(msg)))))
+        })
+  })
+
+  output$student_test_results <- renderDT({
+    no_results <- function(msg) {
+      datatable(data.frame(Message = msg), options = list(dom = "t"), rownames = FALSE)
+    }
+    if (is.null(rv$autoharp_results)) {
+      return(no_results("No test results available for this student. Run automated grading first."))
+    }
+    res <- current_student_result()
+    tests <- test_columns(rv$autoharp_results)
+    if (is.null(res) || length(tests) == 0) {
+      return(no_results("No test results available for this student."))
+    }
+    values <- lapply(tests, function(col) res[[col]])
+    display_df <- data.frame(
+      Test = sub("_check$", "", tests),
+      Result = vapply(values, function(v) {
+        if (is.logical(v)) { if (is.na(v)) "NA" else if (v) "PASS" else "FAIL" } else "INFO"
+      }, character(1)),
+      Value = vapply(values, function(v) format(v), character(1)),
+      stringsAsFactors = FALSE
+    )
     datatable(
       display_df,
-      options = list(
-        pageLength = 10,
-        scrollX = TRUE,
-        dom = 'Bfrtip',
-        ordering = TRUE
-      ),
+      options = list(pageLength = 10, scrollX = TRUE, dom = "frtip"),
       rownames = FALSE,
-      class = 'cell-border stripe hover'
+      selection = "none",
+      class = "cell-border stripe hover"
     ) %>%
-      DT::formatStyle(
-        'Status',
-        backgroundColor = DT::styleEqual(
-          c('SUCCESS', 'FAIL', 'UNKNOWN'),
-          c('#d4edda', '#f8d7da', '#fff3cd')
-        )
-      )
+      formatStyle("Result",
+                  backgroundColor = styleEqual(c("PASS", "FAIL", "NA", "INFO"),
+                                               c("#d4edda", "#f8d7da", "#fff3cd", "#d1ecf1")))
   })
-  
-  # Download handler for Excel file with two sheets
-  output$download_autoharp_excel <- downloadHandler(
-    filename = function() {
-      paste0("autoharp_grading_results_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".xlsx")
-    },
-    content = function(file) {
-      req(rv$autoharp_results)
-      
-      # Check for openxlsx package with user-friendly error handling
-      if (!requireNamespace("openxlsx", quietly = TRUE)) {
-        showNotification(
-          "Package 'openxlsx' is required for Excel export but is not installed.\nPlease install it with: install.packages('openxlsx')",
-          type = "error",
-          duration = 10
+
+  output$grading_progress <- renderUI({
+    pg <- rv$plot_grades
+    if (is.null(pg)) return(p(class = "text-muted small", "No students to grade yet."))
+    n_graded <- sum(pg$graded)
+    n_total <- nrow(pg)
+    pct <- if (n_total > 0) round(n_graded / n_total * 100) else 0
+    tags$div(
+      tags$p(class = "small", paste0("Graded: ", n_graded, " of ", n_total, " students (", pct, "%)")),
+      tags$div(
+        class = "progress",
+        tags$div(
+          class = "progress-bar",
+          role = "progressbar",
+          style = paste0("width: ", pct, "%;"),
+          if (pct > 0) paste0(n_graded, " / ", n_total)
         )
-        stop("openxlsx package not available")
-      }
-      
-      results <- rv$autoharp_results
-      
-      # Create comprehensive grading results dataframe
-      sheet1_df <- data.frame(
-        student_file = basename(results$fname),
-        autoharp_status = results$run_status,
-        timestamp = results$time_stamp,
-        stringsAsFactors = FALSE
       )
-      
-      # Add all available columns from autoharp results
-      for (col in names(results)) {
-        if (!col %in% c("fname", "time_stamp", "run_status")) {
-          sheet1_df[[col]] <- results[[col]]
-        }
-      }
-      
-      # Create workbook
-      wb <- openxlsx::createWorkbook()
-      
-      # Add first sheet: Grading Results
-      openxlsx::addWorksheet(wb, "Grading Results")
-      openxlsx::writeData(wb, "Grading Results", sheet1_df)
-      
-      # Add second sheet: Plot Grades/Comments
-      if (!is.null(rv$plot_grades)) {
-        sheet2_df <- rv$plot_grades[, c("student_file", "grade", "comments", "graded")]
-        names(sheet2_df) <- c("Student", "Plot Grade", "Comments", "Graded")
-        
-        openxlsx::addWorksheet(wb, "Plot Grades")
-        openxlsx::writeData(wb, "Plot Grades", sheet2_df)
-      } else {
-        # Create empty sheet with message
-        openxlsx::addWorksheet(wb, "Plot Grades")
-        openxlsx::writeData(wb, "Plot Grades", 
-                            data.frame(Message = "No plot grades available. Use Tab 2 to grade plots."))
-      }
-      
-      # Save workbook
-      openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
+    )
+  })
+
+  output$consolidated_results <- renderDT({
+    req(rv$autoharp_results)
+    df <- display_names(consolidated_results(pass_fail = TRUE))
+    tests <- sub("_check$", "", test_columns(rv$autoharp_results))
+    table <- datatable(
+      df,
+      options = list(pageLength = 10, scrollX = TRUE, dom = "frtip"),
+      rownames = FALSE,
+      selection = "none",
+      class = "cell-border stripe hover"
+    ) %>%
+      formatStyle("Status",
+                  backgroundColor = styleEqual(c("SUCCESS", "FAIL", "UNKNOWN"),
+                                               c("#d4edda", "#f8d7da", "#fff3cd")))
+    if (length(tests) > 0) {
+      table <- formatStyle(table, tests,
+                           color = styleEqual(c("PASS", "FAIL"), c("#155724", "#721c24")),
+                           fontWeight = styleEqual(c("PASS", "FAIL"), c("600", "600")))
     }
-  )
+    table
+  })
 }
 
 # Run the application
 shinyApp(ui = ui, server = server)
-
-
-# devtools::load_all()
-# 
-# s_env <- populate_soln_env("solution_template_autoharp.Rmd", pattern="test")
-# stud_script_names <- c("sol/student_01.rmd", "sol/student_02.rmd")
-# 
-# # run autoharp function "render_one" on student scripts.
-# corr_out <- lapply(stud_script_names, render_one, out_dir = "student_out",
-#                    knit_root_dir = getwd(), soln_stuff = s_env)
-# a = do.call("rbind", corr_out)
-
-
-

@@ -1,6 +1,6 @@
 Package: autoharp
 Title: Semi-Automatic Grading of R and Rmd Scripts
-Version: 0.3.2
+Version: 0.4.0
 Authors@R: c(
     person("Vik", "Gopal", , "vik.gopal@nus.edu.sg", role = "aut"),
     person("Agrawal", "Naman", , "naman.a@nus.edu.sg", role = c("aut", "cre")),
@@ -18,7 +18,6 @@ Description: A customisable set of tools for assessing and grading
     structure.
 License: MIT + file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.3.3.9000
 Imports: magrittr, dplyr, stringr, rlang, tibble, knitr, rmarkdown,
         shiny, lintr, methods, igraph, xfun
 Collate: 'treeharp.R' 'th_getter-length.R' 'as.matrix.R' 'autoharp.R'
@@ -30,12 +29,13 @@ Collate: 'treeharp.R' 'th_getter-length.R' 'as.matrix.R' 'autoharp.R'
         'pre_checks.R' 'render_one.R' 'reset_path.R' 'to_BFS.R'
         'tree_kernel.R' 'tree_routines.R' 'utils-pipe.R' 'utils.R'
         'write_html.R' 'zzz.R'
-Suggests: testthat
+Suggests: kableExtra, testthat
 SystemRequirements: pandoc (>= 1.14) - http://pandoc.org
 URL: https://namanlab.github.io/autoharp/
 VignetteBuilder: knitr
+Config/roxygen2/version: 8.1.1.9000
 NeedsCompilation: no
-Packaged: 2026-04-11 08:03:48 UTC; namanagrawal
+Packaged: 2026-11-22 03:57:50 UTC; namanagrawal
 Author: Vik Gopal [aut],
   Agrawal Naman [aut, cre],
   Yuting Huang [ctb],
@@ -46,4 +46,4 @@ Author: Vik Gopal [aut],
   National University of Singapore [cph]
 Maintainer: Agrawal Naman <naman.a@nus.edu.sg>
 Repository: CRAN
-Date/Publication: 2026-04-11 12:00:12 UTC
+Date/Publication: 2026-11-22 09:10:02 UTC

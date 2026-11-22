@@ -196,6 +196,16 @@ ui <- fluidPage(
           
           br(),
           
+          # Note on interpreting similarity scores
+          div(class = "status-alert status-warning",
+            icon("exclamation-triangle"),
+            tags$strong(" Interpreting similarity scores: "),
+            "Similarity scores can be affected by renaming variables and reformatting code, and they ",
+            "cannot detect code copied from the web or produced by generative AI tools. Use them to ",
+            "identify scripts that merit a closer look; judgments about collaboration or misconduct ",
+            "should remain with the instructor."
+          ),
+          
           # Summary statistics
           div(class = "panel-section",
             h4(icon("chart-bar"), " Summary Statistics"),

@@ -2,9 +2,17 @@
 % Please edit documentation in R/as.matrix.R
 \name{as.matrix}
 \alias{as.matrix}
+\alias{coerce,TreeHarp,matrix-method}
 \title{TreeHarp Cast a TreeHarp to Matrix.}
+\usage{
+\S4method{coerce}{TreeHarp,matrix}(from, to = "matrix", strict = TRUE)
+}
 \arguments{
 \item{from}{A treeharp object.}
+
+\item{to}{The class to convert to; always \code{"matrix"} here.}
+
+\item{strict}{Not used; it comes from the \code{coerce()} generic.}
 }
 \value{
 A matrix.

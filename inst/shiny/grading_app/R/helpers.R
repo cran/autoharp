@@ -770,7 +770,7 @@ collect_student_plots <- function(student_file, plots_output_dir = NULL) {
     }
   }
   
-  if (grepl("\\.(Rmd|rmd|qmd|Qmd)$", student_file)) {
+  if (grepl("\\.(R|r|Rmd|rmd|qmd|Qmd)$", student_file)) {
     student_name <- basename(student_file)
     student_base <- tools::file_path_sans_ext(student_name)
     
@@ -788,7 +788,7 @@ collect_student_plots <- function(student_file, plots_output_dir = NULL) {
     }
     
     # Fallback: look in the standard _files directory created by rmarkdown/quarto
-    base_name <- sub("\\.(Rmd|rmd|qmd|Qmd)$", "", student_file)
+    base_name <- sub("\\.(R|r|Rmd|rmd|qmd|Qmd)$", "", student_file)
     dirs_to_check <- c(dirs_to_check, paste0(base_name, "_files"))
     
     # Also check for figure-html subdirectory (common pattern)

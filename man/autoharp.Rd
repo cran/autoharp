@@ -32,6 +32,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Agrawal Naman \email{naman.a@nus.edu.sg}
   \item Vik Gopal \email{vik.gopal@nus.edu.sg}
   \item Samuel Seah \email{samuelseah@u.nus.edu}
   \item Viknesh Jeya Kumar \email{viknesh@u.nus.edu}

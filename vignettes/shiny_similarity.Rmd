@@ -145,3 +145,10 @@ similarity threshold slider (defaulting to 0.7) controls how aggressively the
 app groups scripts into clusters; a higher threshold produces fewer, tighter
 clusters.
 
+> **Interpreting similarity scores.** Similarity scores can be affected by
+> renaming variables and reformatting code, and they cannot detect code copied
+> from the web or produced by generative AI tools. Use them to identify scripts
+> that merit a closer look; judgments about collaboration or misconduct should
+> remain with the instructor. The app shows the same note at the top of its
+> Similarity Analysis tab.
+

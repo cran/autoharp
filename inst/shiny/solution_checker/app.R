@@ -5,7 +5,7 @@ library(shinymanager)
 full_tabs = c("lint","html","correctness")
 lint_tabs <- tabPanel("Lint Check",uiOutput(outputId = "lint_check"))
 html_tabs <- tabPanel("HTML Check",uiOutput(outputId = "html_check"))
-correctness_tabs <- tabPanel("Correctness check",tableOutput(outputId = "corr_check"))
+correctness_tabs <- tabPanel("Correctness Check",tableOutput(outputId = "corr_check"))
 list1 <- list(lint_tabs,html_tabs,correctness_tabs)
 #Change up to here by adding new tabs to the list
 
